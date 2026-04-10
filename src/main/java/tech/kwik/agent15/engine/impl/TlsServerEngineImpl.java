@@ -33,6 +33,7 @@ import tech.kwik.agent15.handshake.*;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 import java.util.*;
@@ -312,7 +313,7 @@ public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngin
         byte[] serverHmac = computeFinishedVerifyData(transcriptHash.getServerHash(TlsConstants.HandshakeType.finished), state.getClientHandshakeTrafficSecret());
         // https://tools.ietf.org/html/rfc8446#section-4.4
         // "Recipients of Finished messages MUST verify that the contents are correct and if incorrect MUST terminate the connection with a "decrypt_error" alert."
-        if (!Arrays.equals(clientFinished.getVerifyData(), serverHmac)) {
+        if (!MessageDigest.isEqual(clientFinished.getVerifyData(), serverHmac)) {
             throw new DecryptErrorAlert("incorrect finished message");
         }
 
@@ -334,7 +335,7 @@ public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngin
         // https://datatracker.ietf.org/doc/html/rfc8446#section-4.2.11, section 4.2.11.2
         byte[] partialCH = Arrays.copyOfRange(clientHello.getBytes(), 0, clientHello.getPskExtensionStartPosition() + binderPosition);
         byte[] binder = state.computePskBinder(partialCH);
-        boolean valid = Arrays.equals(pskBinderEntry.getHmac(), binder);
+        boolean valid = MessageDigest.isEqual(pskBinderEntry.getHmac(), binder);
         return valid;
     }
 

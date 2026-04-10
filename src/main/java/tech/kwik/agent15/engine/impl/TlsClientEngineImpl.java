@@ -431,7 +431,7 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
         byte[] serverHmac = computeFinishedVerifyData(transcriptHash.getServerHash(TlsConstants.HandshakeType.certificate_verify), state.getServerHandshakeTrafficSecret());
         // https://tools.ietf.org/html/rfc8446#section-4.4
         // "Recipients of Finished messages MUST verify that the contents are correct and if incorrect MUST terminate the connection with a "decrypt_error" alert."
-        if (!Arrays.equals(finishedMessage.getVerifyData(), serverHmac)) {
+        if (!MessageDigest.isEqual(finishedMessage.getVerifyData(), serverHmac)) {
             throw new DecryptErrorAlert("incorrect finished message");
         }
 
