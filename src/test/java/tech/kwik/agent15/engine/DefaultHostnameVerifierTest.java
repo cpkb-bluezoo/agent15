@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import tech.kwik.agent15.CertificateUtils;
 
 import javax.security.auth.x500.X500Principal;
+import java.security.Principal;
 import java.security.cert.X509Certificate;
 import java.util.List;
 
@@ -135,6 +136,14 @@ class DefaultHostnameVerifierTest {
         // A subject DN with no CN attribute should not match any hostname.
         X500Principal dnWithoutCn = new X500Principal("O=SomeOrg, L=SomeCity, C=US");
         boolean result = verifier.verifyHostname("example.com", dnWithoutCn);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void cnValueContainingCnEqualsShouldNotMatchManipulatedHostname() {
+        Principal dn = () -> "CN=evil.CN=example.com";
+        boolean result = verifier.verifyHostname("evil.example.com", dn);
 
         assertThat(result).isFalse();
     }
