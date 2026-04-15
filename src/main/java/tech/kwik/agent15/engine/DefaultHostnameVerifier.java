@@ -84,7 +84,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
                 .map(s -> s.trim())
                 .filter(s -> s.startsWith("CN="))
                 .map(s -> s.replace("CN=", ""))
-                .allMatch(s -> s.equals(serverName));
+                .anyMatch(s -> s.equals(serverName));
         return matches;
     }
 }

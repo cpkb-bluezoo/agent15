@@ -18,10 +18,11 @@
  */
 package tech.kwik.agent15.engine;
 
-import tech.kwik.agent15.CertificateUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import tech.kwik.agent15.CertificateUtils;
 
+import javax.security.auth.x500.X500Principal;
 import java.security.cert.X509Certificate;
 import java.util.List;
 
@@ -126,6 +127,15 @@ class DefaultHostnameVerifierTest {
         assertThat(result).isFalse();
 
         result = verifier.verifyHostname("xample.com", subjectAlternativeNames);
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void dnWithoutCnShouldNotMatch() {
+        // A subject DN with no CN attribute should not match any hostname.
+        X500Principal dnWithoutCn = new X500Principal("O=SomeOrg, L=SomeCity, C=US");
+        boolean result = verifier.verifyHostname("example.com", dnWithoutCn);
+
         assertThat(result).isFalse();
     }
 
