@@ -61,7 +61,7 @@ public class SignatureAlgorithmsExtension extends Extension {
         }
 
         for (int i = 0; i < supportedAlgorithmsLength; i += 2) {
-            int supportedAlgorithmBytes = buffer.getShort() % 0xffff;
+            int supportedAlgorithmBytes = buffer.getShort() & 0xffff;
             decodeSignatureScheme(supportedAlgorithmBytes).ifPresent(algorithm -> algorithms.add(algorithm));
         }
     }

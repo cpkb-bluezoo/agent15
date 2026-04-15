@@ -50,7 +50,7 @@ public class SupportedGroupsExtension extends Extension {
         }
 
         for (int i = 0; i < namedGroupsLength; i += 2) {
-            int namedGroupBytes = buffer.getShort() % 0xffff;
+            int namedGroupBytes = buffer.getShort() & 0xffff;
             decodeNamedGroup(namedGroupBytes).ifPresent(algorithm -> namedGroups.add(algorithm));
         }
     }
