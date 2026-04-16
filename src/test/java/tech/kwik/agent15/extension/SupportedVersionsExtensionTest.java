@@ -18,10 +18,10 @@
  */
 package tech.kwik.agent15.extension;
 
-import tech.kwik.agent15.util.ByteUtils;
-import tech.kwik.agent15.alert.DecodeErrorException;
-import tech.kwik.agent15.TlsConstants;
 import org.junit.jupiter.api.Test;
+import tech.kwik.agent15.TlsConstants;
+import tech.kwik.agent15.alert.DecodeErrorException;
+import tech.kwik.agent15.util.ByteUtils;
 
 import java.nio.ByteBuffer;
 
@@ -47,6 +47,28 @@ class SupportedVersionsExtensionTest {
         SupportedVersionsExtension supportedVersionsExtension = new SupportedVersionsExtension(buffer, TlsConstants.HandshakeType.client_hello);
 
         assertThat(supportedVersionsExtension.getTlsVersion()).isEqualTo((short) 0x0304);
+    }
+
+    @Test
+    void parsingClientHelloVersionListWith13ShouldUse13() throws Exception {
+        // Extension type 0x002b, data length 0x0005, versions length 0x04, version 0x0303 (TLS 1.2) and version 0x0304 (TLS 1.3)
+        ByteBuffer buffer = ByteBuffer.wrap(ByteUtils.hexToBytes("002b00050403030304"));
+
+        SupportedVersionsExtension extension = new SupportedVersionsExtension(buffer, TlsConstants.HandshakeType.client_hello);
+
+        assertThat(extension.getTlsVersion()).isEqualTo((short) 0x0304);
+        assertThat(extension.containsTls13()).isTrue();
+    }
+
+    @Test
+    void parsingClientHelloVersionListWithout13ShouldReturnNoVersion() throws Exception {
+        // Extension type 0x002b, data length 0x0003, versions length 0x02, version 0x0303 (TLS 1.2)
+        ByteBuffer buffer = ByteBuffer.wrap(ByteUtils.hexToBytes("002b0003020303"));
+
+        SupportedVersionsExtension extension = new SupportedVersionsExtension(buffer, TlsConstants.HandshakeType.client_hello);
+
+        assertThat(extension.getTlsVersion()).isEqualTo((short) 0);
+        assertThat(extension.containsTls13()).isFalse();
     }
 
     @Test

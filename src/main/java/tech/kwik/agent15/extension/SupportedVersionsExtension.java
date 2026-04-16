@@ -48,7 +48,7 @@ public class SupportedVersionsExtension extends Extension {
                 for (int i = 0; i < versionsLength; i += 2) {
                     short version = buffer.getShort();
                     // This implementation only supports TLS 1.3, so search for that version.
-                    if (version == 0x0304 || tlsVersion == 0)  {
+                    if (version == 0x0304)  {
                         tlsVersion = version;
                     }
                 }
@@ -87,5 +87,9 @@ public class SupportedVersionsExtension extends Extension {
 
     public short getTlsVersion() {
         return tlsVersion;
+    }
+
+    public boolean containsTls13() {
+        return tlsVersion == 0x0304;
     }
 }
