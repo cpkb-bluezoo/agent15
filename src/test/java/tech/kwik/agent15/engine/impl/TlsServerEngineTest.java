@@ -30,6 +30,7 @@ import tech.kwik.agent15.ProtectionKeysType;
 import tech.kwik.agent15.alert.DecryptErrorAlert;
 import tech.kwik.agent15.alert.HandshakeFailureAlert;
 import tech.kwik.agent15.alert.MissingExtensionAlert;
+import tech.kwik.agent15.alert.ProtocolVersionAlert;
 import tech.kwik.agent15.engine.ServerMessageSender;
 import tech.kwik.agent15.engine.TlsStatusEventHandler;
 import tech.kwik.agent15.extension.*;
@@ -39,6 +40,7 @@ import tech.kwik.agent15.handshake.FinishedMessage;
 import tech.kwik.agent15.handshake.NewSessionTicketMessage;
 import tech.kwik.agent15.handshake.ServerHello;
 
+import java.nio.ByteBuffer;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
@@ -399,6 +401,26 @@ public class TlsServerEngineTest {
                 TlsServerEngineImpl.determineSignatureAlgorithm(clientAlgorithms, serverPreferredAlgorithms)
                 // Then
         ).isInstanceOf(HandshakeFailureAlert.class);
+    }
+
+    @Test
+    void clientHelloWithOnlyTls12ShouldBeRejected() throws Exception {
+        // Given
+        ClientHello clientHello = createDefaultClientHello();
+        // Replace the SupportedVersionsExtension with one that only offers TLS 1.2
+        clientHello.getExtensions().removeIf(ext -> ext instanceof SupportedVersionsExtension);
+        // Build a SupportedVersionsExtension from raw bytes containing only TLS 1.2 (0x0303)
+        // Extension type 0x002b, data length 0x0003, versions length 0x02, version 0x0303
+        ByteBuffer versionExtBuffer = ByteBuffer.wrap(new byte[] {
+                0x00, 0x2b, 0x00, 0x03, 0x02, 0x03, 0x03
+        });
+        clientHello.getExtensions().add(new SupportedVersionsExtension(versionExtBuffer, HandshakeType.client_hello));
+
+        assertThatThrownBy(() ->
+                // When
+                engine.received(clientHello, ProtectionKeysType.None))
+                // Then
+                .isInstanceOf(ProtocolVersionAlert.class);
     }
 
     private ClientHello createDefaultClientHello() {

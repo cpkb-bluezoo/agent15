@@ -22,11 +22,7 @@ import tech.kwik.agent15.ProtectionKeysType;
 import tech.kwik.agent15.TlsConstants;
 import tech.kwik.agent15.TlsConstants.SignatureScheme;
 import tech.kwik.agent15.TlsProtocolException;
-import tech.kwik.agent15.alert.DecryptErrorAlert;
-import tech.kwik.agent15.alert.HandshakeFailureAlert;
-import tech.kwik.agent15.alert.IllegalParameterAlert;
-import tech.kwik.agent15.alert.MissingExtensionAlert;
-import tech.kwik.agent15.alert.UnexpectedMessageAlert;
+import tech.kwik.agent15.alert.*;
 import tech.kwik.agent15.engine.*;
 import tech.kwik.agent15.extension.*;
 import tech.kwik.agent15.handshake.*;
@@ -101,6 +97,17 @@ public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngin
             return;
         }
         status = Status.ReceivedClientHello;
+
+        // https://www.rfc-editor.org/rfc/rfc8446.html#section-4.2.1
+        // "Implementations of this specification MUST send this extension in the ClientHello containing all versions of
+        //  TLS which they are prepared to negotiate (for this specification, that means minimally 0x0304 (...))."
+        SupportedVersionsExtension supportedVersionsExt = (SupportedVersionsExtension) clientHello.getExtensions().stream()
+                .filter(ext -> ext instanceof SupportedVersionsExtension)
+                .findFirst()
+                .orElseThrow(() -> new ProtocolVersionAlert("supported versions extension is required in Client Hello"));
+        if (!supportedVersionsExt.containsTls13()) {
+            throw new ProtocolVersionAlert("client does not support TLS 1.3");
+        }
 
         // Find first cipher that server supports
         selectedCipher = clientHello.getCipherSuites().stream()
