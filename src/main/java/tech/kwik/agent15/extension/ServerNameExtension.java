@@ -124,4 +124,9 @@ public class ServerNameExtension extends Extension {
         }
 
     }
+
+    @Override
+    public int getType() {
+        return TlsConstants.ExtensionType.server_name.value;
+    }
 }

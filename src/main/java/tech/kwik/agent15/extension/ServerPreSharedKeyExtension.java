@@ -56,4 +56,9 @@ public class ServerPreSharedKeyExtension extends PreSharedKeyExtension {
     public int getSelectedIdentity() {
         return selectedIdentity;
     }
+
+    @Override
+    public int getType() {
+        return TlsConstants.ExtensionType.pre_shared_key.value;
+    }
 }

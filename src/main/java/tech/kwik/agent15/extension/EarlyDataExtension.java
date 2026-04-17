@@ -75,4 +75,9 @@ public class EarlyDataExtension extends Extension {
     public String toString() {
         return "EarlyDataExtension " + (maxEarlyDataSize == null? "(empty)": "[" + maxEarlyDataSize + "]");
     }
+
+    @Override
+    public int getType() {
+        return TlsConstants.ExtensionType.early_data.value;
+    }
 }

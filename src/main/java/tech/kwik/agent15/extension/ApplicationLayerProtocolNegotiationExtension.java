@@ -30,7 +30,6 @@ public class ApplicationLayerProtocolNegotiationExtension extends Extension {
 
     private final List<String> protocols;
 
-
     public ApplicationLayerProtocolNegotiationExtension(String protocol) {
         if (protocol == null || protocol.trim().isEmpty()) {
             throw new IllegalArgumentException("protocol cannot be empty");
@@ -93,5 +92,10 @@ public class ApplicationLayerProtocolNegotiationExtension extends Extension {
     @Override
     public String toString() {
         return "AlpnExtension " + protocols;
+    }
+
+    @Override
+    public int getType() {
+        return TlsConstants.ExtensionType.application_layer_protocol_negotiation.value;
     }
 }

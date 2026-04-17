@@ -351,4 +351,9 @@ public class KeyShareExtension extends Extension {
             i++;
         }
     }
+
+    @Override
+    public int getType() {
+        return TlsConstants.ExtensionType.key_share.value;
+    }
 }

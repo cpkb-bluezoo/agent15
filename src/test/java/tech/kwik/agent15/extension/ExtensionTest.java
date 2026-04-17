@@ -32,6 +32,11 @@ class ExtensionTest {
     void testLargeExtensionDataLength() throws Exception {
         var ext = new Extension() {
             @Override
+            public int getType() {
+                return -1;
+            }
+
+            @Override
             public byte[] getBytes() {
                 return new byte[0];
             }

@@ -85,4 +85,8 @@ public class SignatureAlgorithmsExtension extends Extension {
         return algorithms;
     }
 
+    @Override
+    public int getType() {
+        return TlsConstants.ExtensionType.signature_algorithms.value;
+    }
 }

@@ -74,4 +74,9 @@ public class PskKeyExchangeModesExtension extends Extension {
     public List<TlsConstants.PskKeyExchangeMode> getKeyExchangeModes() {
         return keyExchangeModes;
     }
+
+    @Override
+    public int getType() {
+        return TlsConstants.ExtensionType.psk_key_exchange_modes.value;
+    }
 }

@@ -207,4 +207,9 @@ public class ClientHelloPreSharedKeyExtension extends PreSharedKeyExtension {
             return hmac;
         }
     }
+
+    @Override
+    public int getType() {
+        return TlsConstants.ExtensionType.pre_shared_key.value;
+    }
 }

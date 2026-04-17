@@ -92,4 +92,9 @@ public class SupportedVersionsExtension extends Extension {
     public boolean containsTls13() {
         return tlsVersion == 0x0304;
     }
+
+    @Override
+    public int getType() {
+        return TlsConstants.ExtensionType.supported_versions.value;
+    }
 }

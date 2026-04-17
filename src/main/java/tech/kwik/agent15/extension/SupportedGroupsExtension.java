@@ -78,4 +78,9 @@ public class SupportedGroupsExtension extends Extension {
     public List<TlsConstants.NamedGroup> getNamedGroups() {
         return namedGroups;
     }
+
+    @Override
+    public int getType() {
+        return TlsConstants.ExtensionType.supported_groups.value;
+    }
 }

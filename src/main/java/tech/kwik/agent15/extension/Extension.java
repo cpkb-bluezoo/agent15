@@ -51,6 +51,7 @@ public abstract class Extension {
         return extensionDataLength;
     }
 
+    public abstract int getType();
 
     public abstract byte[] getBytes();
 }

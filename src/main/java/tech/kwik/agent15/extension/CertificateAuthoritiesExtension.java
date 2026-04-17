@@ -93,4 +93,9 @@ public class CertificateAuthoritiesExtension extends Extension {
     public List<X500Principal> getAuthorities() {
         return authorities;
     }
+
+    @Override
+    public int getType() {
+        return TlsConstants.ExtensionType.certificate_authorities.value;
+    }
 }

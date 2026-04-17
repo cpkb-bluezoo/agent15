@@ -49,6 +49,7 @@ public class UnknownExtension extends Extension {
         return data;
     }
 
+    @Override
     public int getType() {
         return type;
     }
