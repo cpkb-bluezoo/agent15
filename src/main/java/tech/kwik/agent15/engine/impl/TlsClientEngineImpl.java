@@ -41,7 +41,6 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -325,14 +324,9 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
             throw new UnsupportedExtensionAlert("extension response to missing request");
         }
 
-        int uniqueExtensions = encryptedExtensions.getExtensions().stream()
-                .map(extension -> extension.getClass())
-                .collect(Collectors.toSet())
-                .size();
-        if (uniqueExtensions != encryptedExtensions.getExtensions().size()) {
-            // "There MUST NOT be more than one extension of the same type in a given extension block."
-            throw new UnsupportedExtensionAlert("duplicate extensions not allowed");
-        }
+        // https://www.rfc-editor.org/rfc/rfc8446.html#section-4.2
+        // "There MUST NOT be more than one extension of the same type in a given extension block."
+        HandshakeMessage.checkForDuplicateExtensions(encryptedExtensions.getExtensions());
 
         transcriptHash.record(encryptedExtensions);
         status = pskAccepted? Status.WaitFinished: Status.WaitCertificateRequest;

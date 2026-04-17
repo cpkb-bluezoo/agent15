@@ -20,12 +20,16 @@ package tech.kwik.agent15.handshake;
 
 import tech.kwik.agent15.TlsConstants;
 import tech.kwik.agent15.alert.IllegalParameterAlert;
+import tech.kwik.agent15.extension.Extension;
+import tech.kwik.agent15.extension.UnknownExtension;
 import tech.kwik.agent15.util.ByteUtils;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 
@@ -57,6 +61,16 @@ class HandshakeMessageTest {
         byte[] rawData = ByteUtils.hexToBytes("0030 0000000e000c0000096c6f63616c686f7374 000d00140012040308040401050308050501080606010201 002900020000 cafebabe");
 
         assertThat(HandshakeMessage.findPositionLastExtension(ByteBuffer.wrap(rawData))).isEqualTo(44);
+    }
+
+    @Test
+    void twoDifferentUnknownExtensionsShouldPassDuplicateCheck() throws Exception {
+        // Two unknown extensions with different type values (0x00ff and 0x00fe), each with 2 bytes of data
+        UnknownExtension ext1 = new UnknownExtension().parse(ByteBuffer.wrap(ByteUtils.hexToBytes("00ff 0002 0000")));
+        UnknownExtension ext2 = new UnknownExtension().parse(ByteBuffer.wrap(ByteUtils.hexToBytes("00fe 0002 0000")));
+
+        assertThatCode(() -> HandshakeMessage.checkForDuplicateExtensions(List.of(ext1, ext2)))
+                .doesNotThrowAnyException();
     }
 
     @Test

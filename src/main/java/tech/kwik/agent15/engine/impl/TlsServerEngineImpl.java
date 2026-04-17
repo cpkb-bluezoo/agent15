@@ -98,6 +98,10 @@ public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngin
         }
         status = Status.ReceivedClientHello;
 
+        // https://www.rfc-editor.org/rfc/rfc8446.html#section-4.2
+        // "There MUST NOT be more than one extension of the same type in a given extension block."
+        HandshakeMessage.checkForDuplicateExtensions(clientHello.getExtensions());
+
         // https://www.rfc-editor.org/rfc/rfc8446.html#section-4.2.1
         // "Implementations of this specification MUST send this extension in the ClientHello containing all versions of
         //  TLS which they are prepared to negotiate (for this specification, that means minimally 0x0304 (...))."

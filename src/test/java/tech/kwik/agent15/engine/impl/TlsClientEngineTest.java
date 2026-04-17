@@ -358,7 +358,7 @@ class TlsClientEngineTest {
                         new ServerNameExtension("server")
                 )), ProtectionKeysType.Handshake))
                 // Then
-                .isInstanceOf(UnsupportedExtensionAlert.class);
+                .isInstanceOf(IllegalParameterAlert.class);
     }
 
     @Test

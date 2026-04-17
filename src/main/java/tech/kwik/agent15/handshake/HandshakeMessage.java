@@ -28,7 +28,9 @@ import tech.kwik.agent15.log.Logger;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * https://datatracker.ietf.org/doc/html/rfc8446#section-4
@@ -143,6 +145,19 @@ public abstract class HandshakeMessage {
             remainingExtensionsLength -= extensionLength;
         }
         return extensions;
+    }
+
+    /**
+     // https://www.rfc-editor.org/rfc/rfc8446.html#section-4.2
+     * "There MUST NOT be more than one extension of the same type in a given extension block."
+     */
+    public static void checkForDuplicateExtensions(List<Extension> extensions) throws IllegalParameterAlert {
+        Set<Integer> seen = new HashSet<>();
+        for (Extension extension : extensions) {
+            if (!seen.add(extension.getType())) {
+                throw new IllegalParameterAlert("duplicate extension");
+            }
+        }
     }
 
     /**
