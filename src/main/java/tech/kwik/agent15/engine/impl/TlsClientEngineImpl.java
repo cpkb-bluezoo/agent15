@@ -192,6 +192,11 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
         if (status != Status.WaitServerHello) {
             return;
         }
+
+        // https://www.rfc-editor.org/rfc/rfc8446.html#section-4.2
+        // "There MUST NOT be more than one extension of the same type in a given extension block."
+        HandshakeMessage.checkForDuplicateExtensions(serverHello.getExtensions());
+
         boolean containsSupportedVersionExt = serverHello.getExtensions().stream().anyMatch(ext -> ext instanceof SupportedVersionsExtension);
         boolean containsKeyExt = serverHello.getExtensions().stream().anyMatch(ext -> ext instanceof PreSharedKeyExtension || ext instanceof KeyShareExtension);
         // https://tools.ietf.org/html/rfc8446#section-4.1.3
@@ -471,6 +476,10 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
         if (status != Status.WaitCertificateRequest) {
             throw new UnexpectedMessageAlert("unexpected certificate request message");
         }
+
+        // https://www.rfc-editor.org/rfc/rfc8446.html#section-4.2
+        // "There MUST NOT be more than one extension of the same type in a given extension block."
+        HandshakeMessage.checkForDuplicateExtensions(certificateRequestMessage.getExtensions());
 
         serverSupportedSignatureSchemes = certificateRequestMessage.getExtensions().stream()
                 .filter(extension -> extension instanceof SignatureAlgorithmsExtension)

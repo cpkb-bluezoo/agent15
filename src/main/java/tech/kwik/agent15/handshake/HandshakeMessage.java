@@ -148,7 +148,7 @@ public abstract class HandshakeMessage {
     }
 
     /**
-     // https://www.rfc-editor.org/rfc/rfc8446.html#section-4.2
+     * https://www.rfc-editor.org/rfc/rfc8446.html#section-4.2
      * "There MUST NOT be more than one extension of the same type in a given extension block."
      */
     public static void checkForDuplicateExtensions(List<Extension> extensions) throws IllegalParameterAlert {

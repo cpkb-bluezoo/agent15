@@ -70,9 +70,7 @@ import static tech.kwik.agent15.TlsConstants.CipherSuite.TLS_AES_256_GCM_SHA384;
 import static tech.kwik.agent15.TlsConstants.CipherSuite.TLS_CHACHA20_POLY1305_SHA256;
 import static tech.kwik.agent15.TlsConstants.NamedGroup.secp256r1;
 import static tech.kwik.agent15.TlsConstants.NamedGroup.x25519;
-import static tech.kwik.agent15.TlsConstants.SignatureScheme.rsa_pkcs1_sha1;
-import static tech.kwik.agent15.TlsConstants.SignatureScheme.rsa_pss_rsae_sha256;
-import static tech.kwik.agent15.TlsConstants.SignatureScheme.rsa_pss_rsae_sha384;
+import static tech.kwik.agent15.TlsConstants.SignatureScheme.*;
 
 class TlsClientEngineTest {
 
@@ -357,6 +355,37 @@ class TlsClientEngineTest {
                         new ServerNameExtension("server"),
                         new ServerNameExtension("server")
                 )), ProtectionKeysType.Handshake))
+                // Then
+                .isInstanceOf(IllegalParameterAlert.class);
+    }
+
+    @Test
+    void serverHelloShouldNotContainDuplicateExtensions() throws Exception {
+        // Given
+        engine.startHandshake();
+
+        ServerHello serverHello = createDefaultServerHello(List.of(
+                new SupportedVersionsExtension(TlsConstants.HandshakeType.server_hello)));
+
+        assertThatThrownBy(() ->
+                // When
+                engine.received(serverHello, ProtectionKeysType.None))
+                // Then
+                .isInstanceOf(IllegalParameterAlert.class);
+    }
+
+    @Test
+    void certificateRequestShouldNotContainDuplicateExtensions() throws Exception {
+        // Given
+        handshakeUpToCertificate();
+
+        CertificateRequestMessage certificateRequest = new CertificateRequestMessage(new SignatureAlgorithmsExtension(rsa_pss_rsae_sha256));
+        FieldSetter.setField(certificateRequest, certificateRequest.getClass().getDeclaredField("extensions"),
+                List.of(new SignatureAlgorithmsExtension(rsa_pss_rsae_sha256), new SignatureAlgorithmsExtension(ecdsa_secp521r1_sha512)));
+
+        assertThatThrownBy(() ->
+                // When
+                engine.received(certificateRequest, ProtectionKeysType.Handshake))
                 // Then
                 .isInstanceOf(IllegalParameterAlert.class);
     }
