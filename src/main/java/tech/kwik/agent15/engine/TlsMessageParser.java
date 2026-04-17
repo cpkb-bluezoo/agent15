@@ -20,6 +20,7 @@ package tech.kwik.agent15.engine;
 
 import tech.kwik.agent15.ProtectionKeysType;
 import tech.kwik.agent15.TlsProtocolException;
+import tech.kwik.agent15.alert.DecodeErrorException;
 import tech.kwik.agent15.extension.ExtensionParser;
 import tech.kwik.agent15.handshake.*;
 
@@ -29,6 +30,8 @@ import java.nio.ByteBuffer;
 import static tech.kwik.agent15.TlsConstants.HandshakeType.*;
 
 public class TlsMessageParser {
+
+    private static final int MAX_HANDSHAKE_MESSAGE_LENGTH = 65536;
 
     private final ExtensionParser customExtensionParser;
 
@@ -54,6 +57,9 @@ public class TlsMessageParser {
         buffer.mark();
         int messageType = buffer.get();
         int length = ((buffer.get() & 0xff) << 16) | ((buffer.get() & 0xff) << 8) | (buffer.get() & 0xff);
+        if (length > MAX_HANDSHAKE_MESSAGE_LENGTH) {
+            throw new DecodeErrorException("handshake message too large (" + length + " bytes)");
+        }
         buffer.reset();
 
         HandshakeMessage parsedMessage;
