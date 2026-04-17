@@ -22,7 +22,6 @@ import at.favre.lib.hkdf.HKDF;
 import at.favre.lib.hkdf.HkdfMacFactory;
 import tech.kwik.agent15.BinderCalculator;
 import tech.kwik.agent15.TlsConstants;
-import tech.kwik.agent15.log.Logger;
 
 import javax.crypto.KeyAgreement;
 import javax.crypto.Mac;
@@ -37,7 +36,7 @@ import java.security.PublicKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.interfaces.XECPublicKey;
 
-import static tech.kwik.agent15.util.ByteUtils.bytesToHex;
+
 
 
 public class TlsState implements BinderCalculator {
@@ -87,7 +86,6 @@ public class TlsState implements BinderCalculator {
         hkdf = HKDF.from(new HkdfMacFactory.Default(macAlgorithm, null));
 
         emptyHash = hashFunction.digest(new byte[0]);
-        Logger.debug("Empty hash: " + bytesToHex(emptyHash));
 
         if (psk == null) {
             // https://tools.ietf.org/html/rfc8446#section-7.1
@@ -105,10 +103,8 @@ public class TlsState implements BinderCalculator {
     private byte[] computeEarlySecret(byte[] ikm) {
         byte[] zeroSalt = new byte[hashLength];
         earlySecret = hkdf.extract(zeroSalt, ikm);
-        Logger.debug("Early secret: " + bytesToHex(earlySecret));
 
         binderKey = hkdfExpandLabel(earlySecret, "res binder", emptyHash, hashLength);
-        Logger.debug("Binder key: " + bytesToHex(binderKey));
 
         return earlySecret;
     }
@@ -153,7 +149,6 @@ public class TlsState implements BinderCalculator {
             keyAgreement.doPhase(serverSharedKey, true);
 
             sharedSecret = keyAgreement.generateSecret();
-            Logger.debug("Shared key: " + bytesToHex(sharedSecret));
         }
         catch (NoSuchAlgorithmException | InvalidKeyException e) {
             throw new RuntimeException("Unsupported crypto: " + e);
@@ -168,30 +163,27 @@ public class TlsState implements BinderCalculator {
 
     public void computeHandshakeSecrets() {
         byte[] derivedSecret = hkdfExpandLabel(earlySecret, "derived", emptyHash, hashLength);
-        Logger.debug("Derived secret: " + bytesToHex(derivedSecret));
 
         handshakeSecret = hkdf.extract(derivedSecret, sharedSecret);
-        Logger.debug("Handshake secret: " + bytesToHex(handshakeSecret));
 
         byte[] handshakeHash = transcriptHash.getHash(TlsConstants.HandshakeType.server_hello);
 
         clientHandshakeTrafficSecret = hkdfExpandLabel(handshakeSecret, "c hs traffic", handshakeHash, hashLength);
-        Logger.debug("Client handshake traffic secret: " + bytesToHex(clientHandshakeTrafficSecret));
 
         serverHandshakeTrafficSecret = hkdfExpandLabel(handshakeSecret, "s hs traffic", handshakeHash, hashLength);
-        Logger.debug("Server handshake traffic secret: " + bytesToHex(serverHandshakeTrafficSecret));
+
+        /*
+        The following secrets are not needed for QUIC, as QUIC derives keys directly from the traffic secrets.
+        They would be needed for TLS over TCP, but as this library is focused on QUIC, there is no need to compute them.
 
         byte[] clientHandshakeKey = hkdfExpandLabel(clientHandshakeTrafficSecret, "key", "", keyLength);
-        Logger.debug("Client handshake key: " + bytesToHex(clientHandshakeKey));
 
         byte[] serverHandshakeKey = hkdfExpandLabel(serverHandshakeTrafficSecret, "key", "", keyLength);
-        Logger.debug("Server handshake key: " + bytesToHex(serverHandshakeKey));
 
         byte[] clientHandshakeIV = hkdfExpandLabel(clientHandshakeTrafficSecret, "iv", "", iv_length);
-        Logger.debug("Client handshake iv: " + bytesToHex(clientHandshakeIV));
 
         byte[] serverHandshakeIV = hkdfExpandLabel(serverHandshakeTrafficSecret, "iv", "", iv_length);
-        Logger.debug("Server handshake iv: " + bytesToHex(serverHandshakeIV));
+         */
     }
 
     public void computeApplicationSecrets() {
@@ -202,36 +194,32 @@ public class TlsState implements BinderCalculator {
         byte[] serverFinishedHash = transcriptHash.getServerHash(TlsConstants.HandshakeType.finished);
 
         byte[] derivedSecret = hkdfExpandLabel(handshakeSecret, "derived", emptyHash, hashLength);
-        Logger.debug("Derived secret: " + bytesToHex(derivedSecret));
 
         byte[] zeroKey = new byte[hashLength];
         masterSecret = hkdf.extract(derivedSecret, zeroKey);
-        Logger.debug("Master secret: "+ bytesToHex(masterSecret));
 
         clientApplicationTrafficSecret = hkdfExpandLabel(masterSecret, "c ap traffic", serverFinishedHash, hashLength);
-        Logger.debug("Client application traffic secret: " + bytesToHex(clientApplicationTrafficSecret));
 
         serverApplicationTrafficSecret = hkdfExpandLabel(masterSecret, "s ap traffic", serverFinishedHash, hashLength);
-        Logger.debug("Server application traffic secret: " + bytesToHex(serverApplicationTrafficSecret));
+
+        /*
+        The following secrets are not needed for QUIC, as QUIC derives keys directly from the traffic secrets.
+        They would be needed for TLS over TCP, but as this library is focused on QUIC, there is no need to compute them.
 
         byte[] clientApplicationKey = hkdfExpandLabel(clientApplicationTrafficSecret, "key", "", keyLength);
-        Logger.debug("Client application key: " + bytesToHex(clientApplicationKey));
 
         byte[] serverApplicationKey = hkdfExpandLabel(serverApplicationTrafficSecret, "key", "", keyLength);
-        Logger.debug("Server application key: " + bytesToHex(serverApplicationKey));
 
         byte[] clientApplicationIv = hkdfExpandLabel(clientApplicationTrafficSecret, "iv", "", iv_length);
-        Logger.debug("Client application iv: " + bytesToHex(clientApplicationIv));
 
         byte[] serverApplicationIv = hkdfExpandLabel(serverApplicationTrafficSecret, "iv", "", iv_length);
-        Logger.debug("Server application iv: " + bytesToHex(serverApplicationIv));
+        */
     }
 
     public void computeResumptionMasterSecret() {
         byte[] clientFinishedHash = transcriptHash.getClientHash(TlsConstants.HandshakeType.finished);
 
         resumptionMasterSecret = hkdfExpandLabel(masterSecret, "res master", clientFinishedHash, hashLength);
-        Logger.debug("Resumption master secret: " + bytesToHex(resumptionMasterSecret));
     }
 
     // https://tools.ietf.org/html/rfc8446#section-4.6.1
