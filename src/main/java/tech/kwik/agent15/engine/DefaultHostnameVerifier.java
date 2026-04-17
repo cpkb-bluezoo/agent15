@@ -70,8 +70,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
         if (dnsName.startsWith("*.")) {
             int firstFullStop = serverName.indexOf(".");
             boolean matchesTrueSubdomain = firstFullStop > 0 && serverName.substring(firstFullStop + 1).equals(dnsName.substring(2));
-            boolean matchesFullDomain = serverName.equals(dnsName.substring(2));
-            return matchesTrueSubdomain || matchesFullDomain;
+            return matchesTrueSubdomain;
         }
         else {
             return serverName.equals(dnsName);

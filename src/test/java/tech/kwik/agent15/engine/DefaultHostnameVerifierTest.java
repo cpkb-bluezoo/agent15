@@ -98,11 +98,13 @@ class DefaultHostnameVerifierTest {
     }
 
     @Test
-    void wildcardDoesMatchDomain() {
+    void wildcardShouldNotMatchBaseDomain() {
+        // Per RFC 6125 §6.4.3, a wildcard certificate for *.example.com should only match
+        // subdomains (e.g. sub.example.com), not the base domain (example.com) itself.
         List<List<?>> subjectAlternativeNames = List.of(List.of(2, "*.example.com"));
         boolean result = verifier.verifyHostname("example.com", subjectAlternativeNames);
 
-        assertThat(result).isTrue();
+        assertThat(result).isFalse();
     }
 
     @Test
