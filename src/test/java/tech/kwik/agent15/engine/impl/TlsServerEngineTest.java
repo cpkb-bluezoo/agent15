@@ -29,6 +29,7 @@ import tech.kwik.agent15.NewSessionTicket;
 import tech.kwik.agent15.ProtectionKeysType;
 import tech.kwik.agent15.alert.DecryptErrorAlert;
 import tech.kwik.agent15.alert.HandshakeFailureAlert;
+import tech.kwik.agent15.alert.IllegalParameterAlert;
 import tech.kwik.agent15.alert.MissingExtensionAlert;
 import tech.kwik.agent15.alert.ProtocolVersionAlert;
 import tech.kwik.agent15.engine.ServerMessageSender;
@@ -401,6 +402,19 @@ public class TlsServerEngineTest {
                 TlsServerEngineImpl.determineSignatureAlgorithm(clientAlgorithms, serverPreferredAlgorithms)
                 // Then
         ).isInstanceOf(HandshakeFailureAlert.class);
+    }
+
+    @Test
+    void clientHelloWithDuplicateExtensionShouldBeRejected() {
+        // Given: a ClientHello with a duplicate SupportedGroupsExtension
+        ClientHello clientHello = createDefaultClientHello();
+        clientHello.getExtensions().add(new SupportedGroupsExtension(NamedGroup.secp384r1));
+
+        assertThatThrownBy(() ->
+                // When
+                engine.received(clientHello, ProtectionKeysType.None))
+                // Then
+                .isInstanceOf(IllegalParameterAlert.class);
     }
 
     @Test
