@@ -18,9 +18,9 @@
  */
 package tech.kwik.agent15.engine.impl;
 
+import org.junit.jupiter.api.Test;
 import tech.kwik.agent15.TlsConstants;
 import tech.kwik.agent15.extension.ClientHelloPreSharedKeyExtension;
-import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
@@ -28,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static tech.kwik.agent15.TlsConstants.CipherSuite.TLS_AES_128_GCM_SHA256;
 
 
 class TlsSessionRegistryImplTest {
@@ -40,14 +41,14 @@ class TlsSessionRegistryImplTest {
         when(tlsState.computePSK(any())).thenReturn(new byte[16]);
         var ticketMessage1 = registry.createNewSessionTicketMessage((byte) 0, TlsConstants.CipherSuite.TLS_AES_256_GCM_SHA384, tlsState, "");
         var ticketMessage2 = registry.createNewSessionTicketMessage((byte) 1, TlsConstants.CipherSuite.TLS_CHACHA20_POLY1305_SHA256, tlsState, "");
-        var ticketMessage3 = registry.createNewSessionTicketMessage((byte) 2, TlsConstants.CipherSuite.TLS_AES_128_GCM_SHA256, tlsState, "");
+        var ticketMessage3 = registry.createNewSessionTicketMessage((byte) 2, TLS_AES_128_GCM_SHA256, tlsState, "");
 
         // When
         Integer selectedIdentity = registry.selectIdentity(List.of(
                 new ClientHelloPreSharedKeyExtension.PskIdentity(ticketMessage1.getTicket(), 0xff),
                 new ClientHelloPreSharedKeyExtension.PskIdentity(ticketMessage2.getTicket(), 0xff),
                 new ClientHelloPreSharedKeyExtension.PskIdentity(ticketMessage3.getTicket(), 0xff)
-        ), TlsConstants.CipherSuite.TLS_AES_128_GCM_SHA256);
+        ), TLS_AES_128_GCM_SHA256);
 
         // Then
         assertThat(selectedIdentity).isEqualTo(2);
@@ -56,12 +57,12 @@ class TlsSessionRegistryImplTest {
     @Test
     void expiredSessionsShouldBeRemoved() throws Exception {
         // Given
-        var registry = new TlsSessionRegistryImpl(1);
+        var registry = new TlsSessionRegistryImpl(1, 1000);
         TlsState tlsState = mock(TlsState.class);
         when(tlsState.computePSK(any())).thenReturn(new byte[16]);
-        var ticketMessage1 = registry.createNewSessionTicketMessage((byte) 0, TlsConstants.CipherSuite.TLS_AES_128_GCM_SHA256, tlsState, "");
+        var ticketMessage1 = registry.createNewSessionTicketMessage((byte) 0, TLS_AES_128_GCM_SHA256, tlsState, "");
         Thread.sleep(500);
-        var ticketMessage2 = registry.createNewSessionTicketMessage((byte) 2, TlsConstants.CipherSuite.TLS_AES_128_GCM_SHA256, tlsState, "");
+        var ticketMessage2 = registry.createNewSessionTicketMessage((byte) 2, TLS_AES_128_GCM_SHA256, tlsState, "");
 
         // When
         Thread.sleep(505);
@@ -75,10 +76,10 @@ class TlsSessionRegistryImplTest {
     @Test
     void expiredSessionShouldNotBeReturn() throws Exception {
         // Given
-        var registry = new TlsSessionRegistryImpl(1);
+        var registry = new TlsSessionRegistryImpl(1, 1000);
         TlsState tlsState = mock(TlsState.class);
         when(tlsState.computePSK(any())).thenReturn(new byte[16]);
-        var ticketMessage1 = registry.createNewSessionTicketMessage((byte) 0, TlsConstants.CipherSuite.TLS_AES_128_GCM_SHA256, tlsState, "");
+        var ticketMessage1 = registry.createNewSessionTicketMessage((byte) 0, TLS_AES_128_GCM_SHA256, tlsState, "");
 
         // When
         Thread.sleep(1005);
@@ -86,7 +87,7 @@ class TlsSessionRegistryImplTest {
         // Then
         Integer selectedIdentity = registry.selectIdentity(List.of(
                 new ClientHelloPreSharedKeyExtension.PskIdentity(ticketMessage1.getTicket(), 0xff)
-        ), TlsConstants.CipherSuite.TLS_AES_128_GCM_SHA256);
+        ), TLS_AES_128_GCM_SHA256);
 
         assertThat(selectedIdentity).isNull();
     }
@@ -100,7 +101,7 @@ class TlsSessionRegistryImplTest {
         registry.shutdown();
 
         // When
-        var ticketMessage = registry.createNewSessionTicketMessage((byte) 0, TlsConstants.CipherSuite.TLS_AES_128_GCM_SHA256, tlsState, "");
+        var ticketMessage = registry.createNewSessionTicketMessage((byte) 0, TLS_AES_128_GCM_SHA256, tlsState, "");
 
         // Then
         assertThat(ticketMessage).isNull();
@@ -112,7 +113,7 @@ class TlsSessionRegistryImplTest {
         var registry = new TlsSessionRegistryImpl();
         TlsState tlsState = mock(TlsState.class);
         when(tlsState.computePSK(any())).thenReturn(new byte[16]);
-        var ticketMessage = registry.createNewSessionTicketMessage((byte) 0, TlsConstants.CipherSuite.TLS_AES_128_GCM_SHA256, tlsState, "");
+        var ticketMessage = registry.createNewSessionTicketMessage((byte) 0, TLS_AES_128_GCM_SHA256, tlsState, "");
 
         // When
         registry.shutdown();
@@ -127,12 +128,30 @@ class TlsSessionRegistryImplTest {
         var registry = new TlsSessionRegistryImpl();
         TlsState tlsState = mock(TlsState.class);
         when(tlsState.computePSK(any())).thenReturn(new byte[16]);
-        var ticketMessage = registry.createNewSessionTicketMessage((byte) 0, TlsConstants.CipherSuite.TLS_AES_128_GCM_SHA256, tlsState, "");
+        var ticketMessage = registry.createNewSessionTicketMessage((byte) 0, TLS_AES_128_GCM_SHA256, tlsState, "");
 
         // When
         registry.shutdown();
 
         // Then
         assertThat(registry.useSession(new ClientHelloPreSharedKeyExtension.PskIdentity(ticketMessage.getTicket(), 0))).isNull();
+    }
+
+    @Test
+    void whenMaxSizeIsReachedOldestSessionShouldBeRemoved() {
+        // Given
+        var registry = new TlsSessionRegistryImpl(3600, 2);
+        TlsState tlsState = mock(TlsState.class);
+        when(tlsState.computePSK(any())).thenReturn(new byte[16]);
+        var ticketMessage1 = registry.createNewSessionTicketMessage((byte) 0, TLS_AES_128_GCM_SHA256, tlsState, "");
+        var ticketMessage2 = registry.createNewSessionTicketMessage((byte) 1, TLS_AES_128_GCM_SHA256, tlsState, "");
+
+        // When
+        var ticketMessage3 = registry.createNewSessionTicketMessage((byte) 2, TLS_AES_128_GCM_SHA256, tlsState, "");
+
+        // Then
+        assertThat(ticketMessage3).isNull();
+        assertThat(ticketMessage1).isNotNull();
+        assertThat(ticketMessage2).isNotNull();
     }
 }

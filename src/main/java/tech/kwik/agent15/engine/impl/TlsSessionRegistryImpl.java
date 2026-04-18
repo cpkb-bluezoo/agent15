@@ -42,22 +42,24 @@ public class TlsSessionRegistryImpl implements TlsSessionRegistry {
 
     private static final int DEFAULT_TICKET_LIFETIME_HOURS = 24;
     private static final int DEFAULT_TICKET_LENGTH = 128 / 8;
+    private static final int DEFAULT_MAX_REGISTRY_SIZE = 1000;  // Approx 400K
 
     private Random randomGenerator = new SecureRandom();
     private Map<BytesKey, Session> sessions = new ConcurrentHashMap<>();
     private int ticketLifeTimeInSeconds;
     private volatile boolean closed;
     private ScheduledExecutorService scheduledExecutorService;
+    private final int maxRegistrySize;
 
     public TlsSessionRegistryImpl() {
-        ticketLifeTimeInSeconds = (int) TimeUnit.HOURS.toSeconds(DEFAULT_TICKET_LIFETIME_HOURS);
-        scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-        scheduledExecutorService.scheduleAtFixedRate(this::cleanupExpiredPsks, 1, 1, TimeUnit.MINUTES);
+        this((int) TimeUnit.HOURS.toSeconds(DEFAULT_TICKET_LIFETIME_HOURS), DEFAULT_MAX_REGISTRY_SIZE);
     }
 
-    public TlsSessionRegistryImpl(int ticketLifeTimeInSeconds) {
-        this();
+    public TlsSessionRegistryImpl(int ticketLifeTimeInSeconds, int maxSize) {
         this.ticketLifeTimeInSeconds = ticketLifeTimeInSeconds;
+        this.maxRegistrySize = maxSize;
+        scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        scheduledExecutorService.scheduleAtFixedRate(this::cleanupExpiredPsks, 1, 1, TimeUnit.MINUTES);
     }
 
     @Override
@@ -67,7 +69,7 @@ public class TlsSessionRegistryImpl implements TlsSessionRegistry {
 
     @Override
     public NewSessionTicketMessage createNewSessionTicketMessage(byte ticketNonce, TlsConstants.CipherSuite cipher, TlsState tlsState, String applicationProtocol, Long maxEarlyDataSize, byte[] data) {
-        if (! closed) {
+        if (! closed && !full()) {
             byte[] psk = tlsState.computePSK(new byte[]{ticketNonce});
             long ageAdd = randomGenerator.nextLong();
             byte[] ticketId = new byte[DEFAULT_TICKET_LENGTH];
@@ -84,6 +86,10 @@ public class TlsSessionRegistryImpl implements TlsSessionRegistry {
         else {
             return null;
         }
+    }
+
+    private boolean full() {
+        return sessions.size() >= maxRegistrySize;
     }
 
     @Override
@@ -141,6 +147,22 @@ public class TlsSessionRegistryImpl implements TlsSessionRegistry {
     }
 
     private class Session implements TlsSession {
+        // Rough size estimate
+        //  - Object header: 16 bytes
+        //  - ticketId (byte[16]): 16 + 16 = 32 bytes (array header + data)
+        //  - ticketNonce (byte): 1 byte (padded to 8)
+        //  - addAdd (long): 8 bytes
+        //  - psk (byte[32] for SHA-256, or byte[48] for SHA-384): ~16 + 48 = 64 bytes
+        //  - cipher (enum ref): 4 bytes
+        //  - created (Instant): ~24 bytes
+        //  - expiry (Instant): ~24 bytes
+        //  - applicationProtocol (String, e.g. "h3"): ~48 bytes
+        //  - data (byte[], typically null): 4 bytes
+        //  - Field padding/alignment: ~8 bytes
+        //  Map entry overhead:
+        //  - BytesKey wrapper: 16 + 4 + 16 + 16 = ~52 bytes (header + ref + array header + data)
+        //  - ConcurrentHashMap.Node: ~48 bytes
+        //  Total: roughly 350-400 bytes per session.
         final byte[] ticketId;
         final byte ticketNonce;
         final long addAdd;
