@@ -2,6 +2,8 @@
 
 # A (partial) TLS 1.3 implementation in Java
 
+[![Maven Central](https://img.shields.io/maven-central/v/tech.kwik/agent15.svg?label=Maven%20Central)](https://mvnrepository.com/artifact/tech.kwik/agent15)
+
 Agent15 is an open source implementation of the [handshake protocol](https://datatracker.ietf.org/doc/html/rfc8446#section-4) of TLS 1.3. 
 It was developed for, and is used by [Kwik](https://bitbucket.org/pjtr/kwik/src/master/), a 100% pure Java implementation of the QUIC protocol. 
 QUIC uses TLS 1.3 for encryption, but only the handshake layer, not the record layer (see [RFC 9001, sec 3](https://www.rfc-editor.org/rfc/rfc9001.html#name-protocol-overview)).
@@ -68,7 +70,7 @@ Maven coordinates:
     <dependency>
         <groupId>tech.kwik</groupId>
         <artifactId>agent15</artifactId>
-        <version>3.1</version>
+        <version>3.2</version>
     </dependency>
 
 

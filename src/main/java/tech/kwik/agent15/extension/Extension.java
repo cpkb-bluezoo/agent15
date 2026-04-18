@@ -51,6 +51,9 @@ public abstract class Extension {
         return extensionDataLength;
     }
 
+    /**
+     * @return the extension type, as defined in https://www.rfc-editor.org/rfc/rfc8446.html#section-4.2
+     */
     public abstract int getType();
 
     public abstract byte[] getBytes();

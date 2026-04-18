@@ -1,5 +1,19 @@
 # Releases
 
+## 3.2 (2026-04-18)
+
+Security hardening and protocol correctness fixes.
+
+- Added `getType()` method added to `Extension` class.
+  This is strictly speaking a breaking change, but the fix is trivial.
+- Reject ClientHello messages that contain duplicate extensions.
+- Put a cap on parsed handshake message size.
+- Put a size limit on the session registry.
+- Verify that the server has selected an identity within the range offered by the client.
+- Remove debug logging of secrets.
+- Fix: TLS versions other than 1.3 should not be accepted.
+- Fix: wildcard certificates should not match the root domain, only sub-domains.
+
 ## 3.1 (2025-04-24)
 
 - Added method to AlgorithmMapping interface to map signature algorithm properly.
