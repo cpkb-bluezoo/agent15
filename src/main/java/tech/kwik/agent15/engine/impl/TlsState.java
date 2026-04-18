@@ -22,6 +22,7 @@ import at.favre.lib.hkdf.HKDF;
 import at.favre.lib.hkdf.HkdfMacFactory;
 import tech.kwik.agent15.BinderCalculator;
 import tech.kwik.agent15.TlsConstants;
+import tech.kwik.agent15.alert.IllegalParameterAlert;
 
 import javax.crypto.KeyAgreement;
 import javax.crypto.Mac;
@@ -274,7 +275,10 @@ public class TlsState implements BinderCalculator {
         this.clientPrivateKey = clientPrivateKey;
     }
 
-    public void setPskSelected(int selectedIdentity) {
+    public void setPskSelected(int selectedIdentity) throws IllegalParameterAlert {
+        if (selectedIdentity != 0) {
+            throw new IllegalParameterAlert("Server selected PSK identity that is not within the range supplied by the client: " + selectedIdentity);
+        }
         pskSelected = true;
     }
 

@@ -266,12 +266,6 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
             throw new MissingExtensionAlert(" either the pre_shared_key extension or the key_share extension must be present");
         }
 
-        if (preSharedKey.isPresent()) {
-            // https://tools.ietf.org/html/rfc8446#section-4.2.11
-            // "In order to accept PSK key establishment, the server sends a "pre_shared_key" extension indicating the selected identity."
-            pskAccepted = true;
-        }
-
         if (! supportedCiphers.contains(serverHello.getCipherSuite())) {
             // https://tools.ietf.org/html/rfc8446#section-4.1.3
             // "A client which receives a cipher suite that was not offered MUST abort the handshake with an "illegal_parameter" alert."
@@ -288,8 +282,11 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
         }
 
         if (preSharedKey.isPresent()) {
+            // https://www.rfc-editor.org/rfc/rfc8446.html#section-4.2.11
+            // "In order to accept PSK key establishment, the server sends a "pre_shared_key" extension indicating the selected identity."
             state.setPskSelected(((ServerPreSharedKeyExtension) preSharedKey.get()).getSelectedIdentity());
             Logger.debug("Server has accepted PSK key establishment");
+            pskAccepted = true;
         }
         else {
             state.setNoPskSelected();

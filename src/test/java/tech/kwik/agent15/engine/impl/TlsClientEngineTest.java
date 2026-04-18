@@ -375,6 +375,22 @@ class TlsClientEngineTest {
     }
 
     @Test
+    void serverHelloPreSharedKeyExtensionSelectedIdentityMustBeZero() throws Exception {
+        // Given
+        engine.startHandshake();
+        // ServerPreSharedKeyExtension with selectedIdentity = 1 is invalid: the client offered only one PSK (index 0)
+        // https://www.rfc-editor.org/rfc/rfc8446#section-4.2.11
+        // "the server's selected_identity MUST be within the range supplied by the client"
+        ServerHello serverHello = createDefaultServerHello(List.of(new ServerPreSharedKeyExtension(1)));
+
+        assertThatThrownBy(() ->
+                // When
+                engine.received(serverHello, ProtectionKeysType.None))
+                // Then
+                .isInstanceOf(IllegalParameterAlert.class);
+    }
+
+    @Test
     void certificateRequestShouldNotContainDuplicateExtensions() throws Exception {
         // Given
         handshakeUpToCertificate();
