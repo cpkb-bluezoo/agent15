@@ -125,6 +125,28 @@ class ClientHelloTest {
     }
 
     @Test
+    void clientHelloWithCipherSuitesLengthExceedingBufferShouldBeRejected() throws Exception {
+        byte[] data = ByteUtils.hexToBytes(("01 00002b 0303 2411ec38adb041713ca81a04182a655b567ecc8c4935e082ec20bb233d57aff2"
+                //    ciphers length 0x7ffe
+                + "00 7ffe 130113021303").replaceAll(" ", ""));
+
+        assertThatThrownBy(() ->
+                new ClientHello(ByteBuffer.wrap(data), null)
+        ).isInstanceOf(DecodeErrorException.class);
+    }
+
+    @Test
+    void clientHelloWithCipherSuitesLengthHighBitSetShouldBeRejected() throws Exception {
+        byte[] data = ByteUtils.hexToBytes(("01 00002b 0303 2411ec38adb041713ca81a04182a655b567ecc8c4935e082ec20bb233d57aff2"
+                //    ciphers length 8000
+                + "00 8000 0100 0000      0000").replaceAll(" ", ""));
+
+        assertThatThrownBy(() ->
+                new ClientHello(ByteBuffer.wrap(data), null)
+        ).isInstanceOf(DecodeErrorException.class);
+    }
+
+    @Test
     void parseClientHelloWithPreSharedKeyExtensionNotAsLast() throws Exception {
         byte[] data = ByteUtils.hexToBytes(("01 00002b 0303 2411ec38adb041713ca81a04182a655b567ecc8c4935e082ec20bb233d57aff2"
                 //    cipher    comp ext's length

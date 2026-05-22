@@ -108,7 +108,10 @@ public class ClientHello extends HandshakeMessage {
             buffer.get(new byte[sessionIdLength]);
         }
 
-        int cipherSuitesLength = buffer.getShort();
+        int cipherSuitesLength = buffer.getShort() & 0xffff;
+        if (buffer.remaining() < cipherSuitesLength || cipherSuitesLength % 2 != 0) {
+            throw new DecodeErrorException("message underflow");
+        }
         for (int i = 0; i < cipherSuitesLength; i += 2) {
             int cipherSuiteValue = buffer.getShort();
             Arrays.stream(TlsConstants.CipherSuite.values())
