@@ -98,7 +98,12 @@ public class ClientHello extends HandshakeMessage {
         clientRandom = new byte[32];
         buffer.get(clientRandom);
 
-        int sessionIdLength = buffer.get();
+        // https://datatracker.ietf.org/doc/html/rfc8446#section-4.1.2
+        // "opaque legacy_session_id<0..32>;"
+        int sessionIdLength = buffer.get() & 0xff;
+        if (sessionIdLength > 32) {
+            throw new DecodeErrorException("legacy session id length out of bounds: " + sessionIdLength);
+        }
         if (sessionIdLength > 0) {
             buffer.get(new byte[sessionIdLength]);
         }

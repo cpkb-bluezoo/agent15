@@ -111,6 +111,20 @@ class ClientHelloTest {
     }
 
     @Test
+    void clientHelloWithSessionIdLengthWithHighBitSetShouldBeRejected() throws Exception {
+        byte[] data = ByteUtils.hexToBytes(("01 000122 0303 2411ec38adb041713ca81a04182a655b567ecc8c4935e082ec20bb233d57aff2"
+                // sessionIdLength byte = 0xff
+                + "ff"
+                // 255 bytes that — read as cipher_suites/compression/extensions after the desync — parse as:
+                // empty ciphers, valid compression, empty extensions, and trailing padding.
+                + "000001000000" + "00".repeat(249)).replaceAll(" ", ""));
+
+        assertThatThrownBy(() ->
+                new ClientHello(ByteBuffer.wrap(data), null)
+        ).isInstanceOf(DecodeErrorException.class);
+    }
+
+    @Test
     void parseClientHelloWithPreSharedKeyExtensionNotAsLast() throws Exception {
         byte[] data = ByteUtils.hexToBytes(("01 00002b 0303 2411ec38adb041713ca81a04182a655b567ecc8c4935e082ec20bb233d57aff2"
                 //    cipher    comp ext's length
