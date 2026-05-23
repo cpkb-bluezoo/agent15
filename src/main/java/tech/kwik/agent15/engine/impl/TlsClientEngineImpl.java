@@ -537,9 +537,11 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
             signatureAlgorithm.initVerify(certificate);
             signatureAlgorithm.update(contentToSign.array());
             verified = signatureAlgorithm.verify(signatureToVerify);
-        } catch (InvalidKeyException e) {
+        }
+        catch (InvalidKeyException e) {
             Logger.debug("Certificate verify: invalid key.");
-        } catch (SignatureException e) {
+        }
+        catch (SignatureException e) {
             Logger.debug("Certificate verify: invalid signature.");
         }
         return verified;

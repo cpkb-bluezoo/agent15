@@ -192,9 +192,11 @@ public abstract class TlsEngineImpl implements TlsEngine {
             try {
                 signatureAlgorithm = Signature.getInstance(algorithmMapping.get("RSASSA-PSS", 256));
                 signatureAlgorithm.setParameter(new PSSParameterSpec("SHA-256", "MGF1", new MGF1ParameterSpec("SHA-256"), 32, 1));
-            } catch (NoSuchAlgorithmException e) {
+            }
+            catch (NoSuchAlgorithmException e) {
                 noRsaSsaPssSupport();
-            } catch (InvalidAlgorithmParameterException e) {
+            }
+            catch (InvalidAlgorithmParameterException e) {
                 // Fairly impossible (because the parameters is hard coded)
                 throw new RuntimeException(e);
             }
@@ -203,9 +205,11 @@ public abstract class TlsEngineImpl implements TlsEngine {
             try {
                 signatureAlgorithm = Signature.getInstance(algorithmMapping.get("RSASSA-PSS", 384));
                 signatureAlgorithm.setParameter(new PSSParameterSpec("SHA-384", "MGF1", new MGF1ParameterSpec("SHA-384"), 48, 1));
-            } catch (NoSuchAlgorithmException e) {
+            }
+            catch (NoSuchAlgorithmException e) {
                 noRsaSsaPssSupport();
-            } catch (InvalidAlgorithmParameterException e) {
+            }
+            catch (InvalidAlgorithmParameterException e) {
                 // Fairly impossible (because the parameters is hard coded)
                 throw new RuntimeException(e);
             }
@@ -214,9 +218,11 @@ public abstract class TlsEngineImpl implements TlsEngine {
             try {
                 signatureAlgorithm = Signature.getInstance(algorithmMapping.get("RSASSA-PSS", 512));
                 signatureAlgorithm.setParameter(new PSSParameterSpec("SHA-512", "MGF1", new MGF1ParameterSpec("SHA-512"), 64, 1));
-            } catch (NoSuchAlgorithmException e) {
+            }
+            catch (NoSuchAlgorithmException e) {
                 noRsaSsaPssSupport();
-            } catch (InvalidAlgorithmParameterException e) {
+            }
+            catch (InvalidAlgorithmParameterException e) {
                 // Fairly impossible (because the parameters is hard coded)
                 throw new RuntimeException(e);
             }
@@ -224,21 +230,24 @@ public abstract class TlsEngineImpl implements TlsEngine {
         else if (signatureScheme.equals(ecdsa_secp256r1_sha256)) {
             try {
                 signatureAlgorithm = Signature.getInstance("SHA256withECDSA");
-            } catch (NoSuchAlgorithmException e) {
+            }
+            catch (NoSuchAlgorithmException e) {
                 throw new RuntimeException("Missing SHA256withECDSA support");
             }
         }
         else if (signatureScheme.equals(ecdsa_secp384r1_sha384)) {
             try {
                 signatureAlgorithm = Signature.getInstance("SHA384withECDSA");
-            } catch (NoSuchAlgorithmException e) {
+            }
+            catch (NoSuchAlgorithmException e) {
                 throw new RuntimeException("Missing SHA384withECDSA support");
             }
         }
         else if (signatureScheme.equals(ecdsa_secp521r1_sha512)) {
             try {
                 signatureAlgorithm = Signature.getInstance("SHA512withECDSA");
-            } catch (NoSuchAlgorithmException e) {
+            }
+            catch (NoSuchAlgorithmException e) {
                 throw new RuntimeException("Missing SHA512withECDSA support");
             }
         }
