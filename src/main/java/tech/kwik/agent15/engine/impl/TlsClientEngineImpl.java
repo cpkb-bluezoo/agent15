@@ -40,6 +40,10 @@ import java.security.cert.CertPathValidatorException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.security.interfaces.ECPublicKey;
+import java.security.spec.ECGenParameterSpec;
+import java.security.spec.ECParameterSpec;
+import java.security.spec.InvalidParameterSpecException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -510,7 +514,47 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
         status = Status.WaitCertificate;
     }
 
-    protected boolean verifySignature(byte[] signatureToVerify, TlsConstants.SignatureScheme signatureScheme, Certificate certificate, byte[] transcriptHash) throws HandshakeFailureAlert {
+    /**
+     * Checks that curve of the given key matches what the scheme requires, throwing an exception when it does not.
+     * @param publicKey
+     * @param signatureScheme
+     * @throws IllegalParameterAlert
+     */
+    private void checkEcKeyMatchesScheme(PublicKey publicKey, TlsConstants.SignatureScheme signatureScheme) throws IllegalParameterAlert {
+        if (signatureScheme != ecdsa_secp256r1_sha256 && signatureScheme != ecdsa_secp384r1_sha384 && signatureScheme != ecdsa_secp521r1_sha512) {
+            return;
+        }
+        if (! (publicKey instanceof ECPublicKey)) {
+            throw new IllegalParameterAlert("ECDSA signature scheme requires EC public key");
+        }
+        String expectedCurveName;
+        if (signatureScheme == ecdsa_secp256r1_sha256) {
+            expectedCurveName = "secp256r1";
+        }
+        else if (signatureScheme == ecdsa_secp384r1_sha384) {
+            expectedCurveName = "secp384r1";
+        }
+        else {  // signatureScheme == ecdsa_secp521r1_sha512
+            expectedCurveName = "secp521r1";
+        }
+        try {
+            AlgorithmParameters params = AlgorithmParameters.getInstance("EC");
+            params.init(new ECGenParameterSpec(expectedCurveName));
+            ECParameterSpec expectedSpec = params.getParameterSpec(ECParameterSpec.class);
+            ECParameterSpec actualSpec = ((ECPublicKey) publicKey).getParams();
+            if (!expectedSpec.getCurve().equals(actualSpec.getCurve())) {
+                throw new IllegalParameterAlert("EC key curve does not match signature scheme");
+            }
+        }
+        catch (NoSuchAlgorithmException | InvalidParameterSpecException e) {
+            // NoSuchAlgorithmException from getInstance("EC"),
+            // InvalidParameterSpecException from init(ECGenParameterSpec) and getParameterSpec(ECParameterSpec)
+            throw new RuntimeException(e);
+        }
+    }
+
+    protected boolean verifySignature(byte[] signatureToVerify, TlsConstants.SignatureScheme signatureScheme, Certificate certificate, byte[] transcriptHash) throws HandshakeFailureAlert, IllegalParameterAlert {
+        checkEcKeyMatchesScheme(certificate.getPublicKey(), signatureScheme);
         // https://tools.ietf.org/html/rfc8446#section-4.4.3
         // "The digital signature is then computed over the concatenation of:
         //   -  A string that consists of octet 32 (0x20) repeated 64 times

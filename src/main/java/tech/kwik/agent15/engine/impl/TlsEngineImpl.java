@@ -230,6 +230,7 @@ public abstract class TlsEngineImpl implements TlsEngine {
         else if (signatureScheme.equals(ecdsa_secp256r1_sha256)) {
             try {
                 signatureAlgorithm = Signature.getInstance("SHA256withECDSA");
+                // Note that SHA256withECDSA excepts any EC public key, so additional check on the key's curve is necessary
             }
             catch (NoSuchAlgorithmException e) {
                 throw new RuntimeException("Missing SHA256withECDSA support");
@@ -238,6 +239,7 @@ public abstract class TlsEngineImpl implements TlsEngine {
         else if (signatureScheme.equals(ecdsa_secp384r1_sha384)) {
             try {
                 signatureAlgorithm = Signature.getInstance("SHA384withECDSA");
+                // Note that SHA384withECDSA excepts any EC public key, so additional check on the key's curve is necessary
             }
             catch (NoSuchAlgorithmException e) {
                 throw new RuntimeException("Missing SHA384withECDSA support");
@@ -246,6 +248,7 @@ public abstract class TlsEngineImpl implements TlsEngine {
         else if (signatureScheme.equals(ecdsa_secp521r1_sha512)) {
             try {
                 signatureAlgorithm = Signature.getInstance("SHA512withECDSA");
+                // Note that SHA512withECDSA excepts any EC public key, so additional check on the key's curve is necessary
             }
             catch (NoSuchAlgorithmException e) {
                 throw new RuntimeException("Missing SHA512withECDSA support");

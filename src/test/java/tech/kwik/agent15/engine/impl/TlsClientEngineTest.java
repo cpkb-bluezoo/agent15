@@ -572,6 +572,19 @@ class TlsClientEngineTest {
     }
 
     @Test
+    void verifySignatureWithWrongEcCurveShouldThrowIllegalParameter() throws Exception {
+        // Given: a P-384 certificate, but the scheme claims P-256 (ecdsa_secp256r1_sha256)
+        Certificate p384Certificate = CertificateUtils.inflateCertificate(encodedSampleEcdsa384Certificate);
+        byte[] hash = new byte[32];
+
+        assertThatThrownBy(() ->
+                // When
+                engine.verifySignature(new byte[0], ecdsa_secp256r1_sha256, p384Certificate, hash))
+                // Then
+                .isInstanceOf(IllegalParameterAlert.class);
+    }
+
+    @Test
     void unknownCertificateShouldAbortTls() throws Exception {
         // Given
         byte[] validSignature = createServerSignature();
