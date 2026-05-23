@@ -71,7 +71,16 @@ public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngin
     private byte[] additionalSessionData;
     private Function<ByteBuffer, Boolean> sessionDataVerificationCallback;
 
-
+    /**
+     * Create new TLS server engine.
+     * Caller must ensure that the preferred signature schemes are compatible with the provided certificate (i.e. that the certificate's public key can be used with all signature schemes).
+     * @param certificates  the certificate chain for the server certificate
+     * @param certificateKey  the private key for the server certificate
+     * @param preferredSignatureSchemes   the signature schemes that the server supports (must be compatible with the provided certificate)
+     * @param serverMessageSender  the callback that is used to send messages to the client
+     * @param tlsStatusHandler  the callback that is used to notify the context of status changes in the TLS engine, for example when secrets become available or when the handshake is finished
+     * @param tlsSessionRegistry  the registry that is used to store and retrieve session data for session resumption; can be null if session resumption is not supported
+     */
     public TlsServerEngineImpl(List<X509Certificate> certificates, PrivateKey certificateKey, List<SignatureScheme> preferredSignatureSchemes, ServerMessageSender serverMessageSender, TlsStatusEventHandler tlsStatusHandler, TlsSessionRegistry tlsSessionRegistry) {
         this.serverCertificateChain = certificates;
         this.certificatePrivateKey = certificateKey;
@@ -177,7 +186,7 @@ public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngin
                 throw new MissingExtensionAlert("psk_key_exchange_modes extension required with pre_shared_key");
             }
             // Check for PSK Exchange mode; server only supports psk_dhe_ke
-            if (clientSupportedKeyExchangeModes.contains(psk_dhe_ke)) {
+            if (clientSupportedKeyExchangeModes.contains(psk_dhe_ke) && sessionRegistry != null) {
                 ClientHelloPreSharedKeyExtension preSharedKeyExtension = (ClientHelloPreSharedKeyExtension) pskExtension.get();
                 selectedIdentity = sessionRegistry.selectIdentity(preSharedKeyExtension.getIdentities(), selectedCipher);
                 if (selectedIdentity != null) {
