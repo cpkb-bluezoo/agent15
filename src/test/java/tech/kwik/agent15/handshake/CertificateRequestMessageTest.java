@@ -18,11 +18,11 @@
  */
 package tech.kwik.agent15.handshake;
 
+import org.junit.jupiter.api.Test;
 import tech.kwik.agent15.TlsConstants;
 import tech.kwik.agent15.alert.DecodeErrorException;
 import tech.kwik.agent15.extension.SignatureAlgorithmsExtension;
 import tech.kwik.agent15.util.ByteUtils;
-import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -72,6 +72,16 @@ class CertificateRequestMessageTest {
     void parseMessageWithInvalidExtensionLength() throws Exception {
         //                                                 |-> extension, 30 bytes
         var data = ByteUtils.hexToBytes("0d00002100001d002f001a0018001630143112301006035504030c096c6f63616c686f7374");
+
+        assertThatThrownBy(() ->
+                new CertificateRequestMessage().parse(ByteBuffer.wrap(data))
+        ).isInstanceOf(DecodeErrorException.class);
+    }
+
+    @Test
+    void parseMessageWithContextLengthHighBitSetShouldThrow() throws Exception {
+        //                                  ext len ctx len
+        var data = ByteUtils.hexToBytes("0d 000003  ff      0000".replaceAll(" ", ""));
 
         assertThatThrownBy(() ->
                 new CertificateRequestMessage().parse(ByteBuffer.wrap(data))

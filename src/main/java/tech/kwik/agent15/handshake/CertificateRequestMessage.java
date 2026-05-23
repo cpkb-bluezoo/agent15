@@ -49,7 +49,10 @@ public class CertificateRequestMessage extends HandshakeMessage {
         int startPosition = buffer.position();
         int remainingLength = parseHandshakeHeader(buffer, TlsConstants.HandshakeType.certificate_request, MINIMUM_MESSAGE_SIZE);
 
-        int contextLength = buffer.get();
+        int contextLength = buffer.get() & 0xff;
+        if (buffer.remaining() < contextLength + 2) {
+            throw new DecodeErrorException("invalid certificate_request_context length");
+        }
         certificateRequestContext = new byte[contextLength];
         if (contextLength > 0) {
             buffer.get(certificateRequestContext);
