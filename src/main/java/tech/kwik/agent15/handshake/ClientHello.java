@@ -101,7 +101,7 @@ public class ClientHello extends HandshakeMessage {
         // https://datatracker.ietf.org/doc/html/rfc8446#section-4.1.2
         // "opaque legacy_session_id<0..32>;"
         int sessionIdLength = buffer.get() & 0xff;
-        if (sessionIdLength > 32) {
+        if (sessionIdLength > 32 || buffer.remaining() < sessionIdLength) {
             throw new DecodeErrorException("legacy session id length out of bounds: " + sessionIdLength);
         }
         if (sessionIdLength > 0) {
@@ -109,7 +109,8 @@ public class ClientHello extends HandshakeMessage {
         }
 
         int cipherSuitesLength = buffer.getShort() & 0xffff;
-        if (buffer.remaining() < cipherSuitesLength || cipherSuitesLength % 2 != 0) {
+        int compressionBytes = 1 + 1;  // Compression methods length (1 byte) + compression method (1 byte)
+        if (buffer.remaining() < cipherSuitesLength + compressionBytes || cipherSuitesLength % 2 != 0) {
             throw new DecodeErrorException("message underflow");
         }
         for (int i = 0; i < cipherSuitesLength; i += 2) {

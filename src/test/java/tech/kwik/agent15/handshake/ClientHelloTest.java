@@ -147,6 +147,29 @@ class ClientHelloTest {
     }
 
     @Test
+    void clientHelloTruncatedInSessionIdShouldThrow() throws Exception {
+        byte[] data = ByteUtils.hexToBytes(("01 00002b 0303 2411ec38adb041713ca81a04182a655b567ecc8c4935e082ec20bb233d57aff2"
+                // sessionIdLength = 10, but only 8 bytes remain in the buffer after that byte
+                + "0a 0000000000000000").replaceAll(" ", ""));
+
+        assertThatThrownBy(() ->
+                new ClientHello(ByteBuffer.wrap(data), null)
+        ).isInstanceOf(DecodeErrorException.class);
+    }
+
+    @Test
+    void clientHelloTruncatedAfterCipherSuitesShouldThrowDecodeError() throws Exception {
+        // Buffer ends exactly after cipher suites — no room for the 2 compression-method bytes.
+        byte[] data = ByteUtils.hexToBytes(("01 00002b 0303 2411ec38adb041713ca81a04182a655b567ecc8c4935e082ec20bb233d57aff2"
+                //    ciphersLen  3 ciphers — buffer ends here, no compression bytes
+                + "00 0006 130113021303").replaceAll(" ", ""));
+
+        assertThatThrownBy(() ->
+                new ClientHello(ByteBuffer.wrap(data), null)
+        ).isInstanceOf(DecodeErrorException.class);
+    }
+
+    @Test
     void parseClientHelloWithPreSharedKeyExtensionNotAsLast() throws Exception {
         byte[] data = ByteUtils.hexToBytes(("01 00002b 0303 2411ec38adb041713ca81a04182a655b567ecc8c4935e082ec20bb233d57aff2"
                 //    cipher    comp ext's length
