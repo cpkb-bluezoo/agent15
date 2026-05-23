@@ -18,11 +18,11 @@
  */
 package tech.kwik.agent15.extension;
 
+import org.junit.jupiter.api.Test;
 import tech.kwik.agent15.TlsConstants;
 import tech.kwik.agent15.TlsProtocolException;
 import tech.kwik.agent15.alert.DecodeErrorException;
 import tech.kwik.agent15.util.ByteUtils;
-import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
 import java.security.interfaces.ECPublicKey;
@@ -202,6 +202,16 @@ class KeyShareExtensionTest {
         assertThat(keyShareEntries)
                 .hasSize(1)
                 .anyMatch(entry -> entry.getNamedGroup() == TlsConstants.NamedGroup.secp256r1);
+    }
+
+    @Test
+    void parsingKeyLengthHighBitSetForUnknownGroupShouldThrow() {
+        String rawData = "0033" + "0006" + "0004" + "fafa" + "8000";
+        ByteBuffer buffer = ByteBuffer.wrap(ByteUtils.hexToBytes(rawData));
+
+        assertThatThrownBy(
+                () -> new KeyShareExtension(buffer, TlsConstants.HandshakeType.client_hello)
+        ).isInstanceOf(DecodeErrorException.class);
     }
 
     @Test

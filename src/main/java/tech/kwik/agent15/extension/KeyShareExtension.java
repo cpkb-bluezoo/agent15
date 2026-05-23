@@ -138,7 +138,7 @@ public class KeyShareExtension extends Extension {
             recognizedNamedGroup.ifPresent(namedGroup -> keyShareEntries.add(new ECKeyShareEntry(namedGroup, null)));
         }
         else {
-            int keyLength = buffer.getShort();
+            int keyLength = buffer.getShort() & 0xffff;
             if (buffer.remaining() < keyLength) {
                 throw new DecodeErrorException("extension underflow");
             }
