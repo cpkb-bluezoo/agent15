@@ -20,6 +20,7 @@ package tech.kwik.agent15.engine;
 
 import tech.kwik.agent15.ProtectionKeysType;
 import tech.kwik.agent15.TlsProtocolException;
+import tech.kwik.agent15.alert.UnexpectedMessageAlert;
 import tech.kwik.agent15.handshake.*;
 
 import java.io.IOException;
@@ -27,20 +28,26 @@ import java.io.IOException;
 public interface ServerMessageProcessor extends MessageProcessor {
 
     default void received(ServerHello sh, ProtectionKeysType protectedBy) throws TlsProtocolException, IOException {
+        throw new UnexpectedMessageAlert("no server hello expected");
     }
 
     default void received(EncryptedExtensions ee, ProtectionKeysType protectedBy) throws TlsProtocolException, IOException {
+        throw new UnexpectedMessageAlert("no encrypted extensions expected");
     }
 
     default void received(CertificateMessage cm, ProtectionKeysType protectedBy) throws TlsProtocolException, IOException {
+        throw new UnexpectedMessageAlert("no certificate message expected");
     }
 
     default void received(CertificateVerifyMessage cv, ProtectionKeysType protectedBy) throws TlsProtocolException, IOException {
+        throw new UnexpectedMessageAlert("no certificate verify message expected");
     }
 
     default void received(NewSessionTicketMessage nst, ProtectionKeysType protectedBy) throws TlsProtocolException, IOException {
+        throw new UnexpectedMessageAlert("no new session ticket message expected");
     }
 
     default void received(CertificateRequestMessage cr, ProtectionKeysType protectedBy) throws TlsProtocolException, IOException {
+        throw new UnexpectedMessageAlert("no certificate request message expected");
     }
 }
