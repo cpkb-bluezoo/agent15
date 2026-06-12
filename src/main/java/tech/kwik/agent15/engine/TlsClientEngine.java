@@ -23,8 +23,6 @@ import tech.kwik.agent15.ProtectionKeysType;
 import tech.kwik.agent15.TlsConstants;
 import tech.kwik.agent15.TlsProtocolException;
 import tech.kwik.agent15.alert.ErrorAlert;
-import tech.kwik.agent15.alert.IllegalParameterAlert;
-import tech.kwik.agent15.alert.MissingExtensionAlert;
 import tech.kwik.agent15.alert.UnexpectedMessageAlert;
 import tech.kwik.agent15.extension.Extension;
 import tech.kwik.agent15.handshake.*;
@@ -146,7 +144,7 @@ public interface TlsClientEngine extends TlsEngine {
      */
     void setCompatibilityMode(boolean compatibilityMode);
 
-    void received(ServerHello serverHello, ProtectionKeysType protectedBy) throws MissingExtensionAlert, IllegalParameterAlert;
+    void received(ServerHello serverHello, ProtectionKeysType protectedBy) throws TlsProtocolException;
 
     void received(EncryptedExtensions encryptedExtensions, ProtectionKeysType protectedBy) throws TlsProtocolException;
 

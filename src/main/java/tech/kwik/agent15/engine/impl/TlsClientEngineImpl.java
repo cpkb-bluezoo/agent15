@@ -188,9 +188,9 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
      * @throws MissingExtensionAlert
      */
     @Override
-    public void received(ServerHello serverHello, ProtectionKeysType protectedBy) throws MissingExtensionAlert, IllegalParameterAlert {
+    public void received(ServerHello serverHello, ProtectionKeysType protectedBy) throws TlsProtocolException {
         if (status != Status.WaitServerHello) {
-            return;
+            throw new UnexpectedMessageAlert("incorrect protection level");
         }
 
         // https://www.rfc-editor.org/rfc/rfc8446.html#section-4.2

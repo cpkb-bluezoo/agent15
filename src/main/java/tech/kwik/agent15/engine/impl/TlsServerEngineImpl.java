@@ -94,7 +94,7 @@ public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngin
     @Override
     public void received(ClientHello clientHello, ProtectionKeysType protectedBy) throws TlsProtocolException, IOException {
         if (status != Status.Start) {
-            return;
+            throw new UnexpectedMessageAlert("client hello already received");
         }
         status = Status.ReceivedClientHello;
 
@@ -303,7 +303,7 @@ public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngin
     @Override
     public void received(FinishedMessage clientFinished, ProtectionKeysType protectedBy) throws TlsProtocolException, IOException {
         if (status != Status.WaitFinished) {
-            return;
+            throw new UnexpectedMessageAlert("unexpected finished message");
         }
         if (protectedBy != ProtectionKeysType.Handshake) {
             throw new UnexpectedMessageAlert("incorrect protection level");

@@ -71,6 +71,7 @@ import static tech.kwik.agent15.TlsConstants.CipherSuite.TLS_CHACHA20_POLY1305_S
 import static tech.kwik.agent15.TlsConstants.NamedGroup.secp256r1;
 import static tech.kwik.agent15.TlsConstants.NamedGroup.x25519;
 import static tech.kwik.agent15.TlsConstants.SignatureScheme.*;
+import static tech.kwik.agent15.util.TestUtils.regardless;
 
 class TlsClientEngineTest {
 
@@ -309,7 +310,9 @@ class TlsClientEngineTest {
 
         // When
         ServerHello serverHello2 = createDefaultServerHello(TLS_CHACHA20_POLY1305_SHA256);
-        engine.received(serverHello2, ProtectionKeysType.None);
+        regardless(() ->
+                engine.received(serverHello2, ProtectionKeysType.None)
+        );
 
         // Then
         assertThat(engine.getSelectedCipher()).isEqualTo(serverHello1.getCipherSuite());

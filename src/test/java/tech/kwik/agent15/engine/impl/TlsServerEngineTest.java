@@ -61,6 +61,7 @@ import static tech.kwik.agent15.TlsConstants.*;
 import static tech.kwik.agent15.TlsConstants.CipherSuite.TLS_AES_128_GCM_SHA256;
 import static tech.kwik.agent15.TlsConstants.CipherSuite.TLS_CHACHA20_POLY1305_SHA256;
 import static tech.kwik.agent15.TlsConstants.SignatureScheme.*;
+import static tech.kwik.agent15.util.TestUtils.regardless;
 
 
 public class TlsServerEngineTest {
@@ -109,7 +110,9 @@ public class TlsServerEngineTest {
                 List.of(TLS_CHACHA20_POLY1305_SHA256),   // Intentionally different cipher, this is the crux of the test!
                 List.of(rsa_pss_rsae_sha256),
                 NamedGroup.secp256r1, Collections.emptyList(), null, ClientHello.PskKeyEstablishmentMode.none);
-        engine.received(clientHello2, ProtectionKeysType.None);
+        regardless(() ->
+                engine.received(clientHello2, ProtectionKeysType.None)
+        );
 
         // Then
         assertThat(engine.getSelectedCipher()).isEqualTo(TLS_AES_128_GCM_SHA256);
