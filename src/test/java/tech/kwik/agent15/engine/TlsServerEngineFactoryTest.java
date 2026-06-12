@@ -18,10 +18,10 @@
  */
 package tech.kwik.agent15.engine;
 
-import tech.kwik.agent15.CertificateUtils;
-import tech.kwik.agent15.TlsConstants;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.jupiter.api.Test;
+import tech.kwik.agent15.TlsConstants;
+import tech.kwik.agent15.util.CertificateUtils;
 
 import java.security.KeyStore;
 import java.security.Security;
@@ -29,10 +29,10 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.List;
 
-import static tech.kwik.agent15.TlsConstants.SignatureScheme;
-import static tech.kwik.agent15.TlsConstants.SignatureScheme.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static tech.kwik.agent15.TlsConstants.SignatureScheme;
+import static tech.kwik.agent15.TlsConstants.SignatureScheme.*;
 
 class TlsServerEngineFactoryTest {
 

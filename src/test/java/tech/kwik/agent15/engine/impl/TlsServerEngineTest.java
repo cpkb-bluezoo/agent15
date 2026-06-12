@@ -23,8 +23,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-import tech.kwik.agent15.CertificateUtils;
-import tech.kwik.agent15.KeyUtils;
 import tech.kwik.agent15.NewSessionTicket;
 import tech.kwik.agent15.ProtectionKeysType;
 import tech.kwik.agent15.alert.DecryptErrorAlert;
@@ -40,6 +38,8 @@ import tech.kwik.agent15.handshake.EncryptedExtensions;
 import tech.kwik.agent15.handshake.FinishedMessage;
 import tech.kwik.agent15.handshake.NewSessionTicketMessage;
 import tech.kwik.agent15.handshake.ServerHello;
+import tech.kwik.agent15.util.CertificateUtils;
+import tech.kwik.agent15.util.KeyUtils;
 
 import java.nio.ByteBuffer;
 import java.security.KeyFactory;
@@ -55,12 +55,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
-import static tech.kwik.agent15.CertificateUtils.encodedKwikDotTechRsaCertificate;
-import static tech.kwik.agent15.CertificateUtils.encodedKwikDotTechRsaCertificatePrivateKey;
 import static tech.kwik.agent15.TlsConstants.*;
 import static tech.kwik.agent15.TlsConstants.CipherSuite.TLS_AES_128_GCM_SHA256;
 import static tech.kwik.agent15.TlsConstants.CipherSuite.TLS_CHACHA20_POLY1305_SHA256;
 import static tech.kwik.agent15.TlsConstants.SignatureScheme.*;
+import static tech.kwik.agent15.util.CertificateUtils.encodedKwikDotTechRsaCertificate;
+import static tech.kwik.agent15.util.CertificateUtils.encodedKwikDotTechRsaCertificatePrivateKey;
 import static tech.kwik.agent15.util.TestUtils.regardless;
 
 

@@ -16,14 +16,12 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tech.kwik.agent15;
+package tech.kwik.agent15.engine.impl;
 
 import at.favre.lib.hkdf.HKDF;
-import tech.kwik.agent15.engine.impl.TlsState;
-import tech.kwik.agent15.engine.impl.TranscriptHash;
+import org.junit.jupiter.api.Test;
 import tech.kwik.agent15.util.ByteUtils;
 import tech.kwik.agent15.util.FieldGetter;
-import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
 

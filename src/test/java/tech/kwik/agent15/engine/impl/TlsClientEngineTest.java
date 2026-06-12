@@ -25,8 +25,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.mockito.internal.util.reflection.FieldReader;
-import tech.kwik.agent15.CertificateUtils;
-import tech.kwik.agent15.KeyUtils;
 import tech.kwik.agent15.ProtectionKeysType;
 import tech.kwik.agent15.TlsConstants;
 import tech.kwik.agent15.alert.*;
@@ -37,7 +35,9 @@ import tech.kwik.agent15.engine.TlsStatusEventHandler;
 import tech.kwik.agent15.extension.*;
 import tech.kwik.agent15.handshake.*;
 import tech.kwik.agent15.util.ByteUtils;
+import tech.kwik.agent15.util.CertificateUtils;
 import tech.kwik.agent15.util.FieldSetter;
+import tech.kwik.agent15.util.KeyUtils;
 
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
@@ -64,13 +64,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
-import static tech.kwik.agent15.CertificateUtils.*;
 import static tech.kwik.agent15.TlsConstants.CipherSuite.TLS_AES_128_GCM_SHA256;
 import static tech.kwik.agent15.TlsConstants.CipherSuite.TLS_AES_256_GCM_SHA384;
 import static tech.kwik.agent15.TlsConstants.CipherSuite.TLS_CHACHA20_POLY1305_SHA256;
 import static tech.kwik.agent15.TlsConstants.NamedGroup.secp256r1;
 import static tech.kwik.agent15.TlsConstants.NamedGroup.x25519;
 import static tech.kwik.agent15.TlsConstants.SignatureScheme.*;
+import static tech.kwik.agent15.util.CertificateUtils.*;
 import static tech.kwik.agent15.util.TestUtils.regardless;
 
 class TlsClientEngineTest {

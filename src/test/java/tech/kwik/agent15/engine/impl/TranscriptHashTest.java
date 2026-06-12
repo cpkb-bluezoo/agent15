@@ -16,11 +16,11 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tech.kwik.agent15;
+package tech.kwik.agent15.engine.impl;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import tech.kwik.agent15.engine.impl.TranscriptHash;
+import tech.kwik.agent15.TlsConstants;
 import tech.kwik.agent15.handshake.CertificateMessage;
 import tech.kwik.agent15.handshake.ClientHello;
 import tech.kwik.agent15.handshake.EncryptedExtensions;

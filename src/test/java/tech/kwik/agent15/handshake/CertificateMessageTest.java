@@ -18,11 +18,11 @@
  */
 package tech.kwik.agent15.handshake;
 
-import tech.kwik.agent15.CertificateUtils;
+import org.junit.jupiter.api.Test;
 import tech.kwik.agent15.alert.BadCertificateAlert;
 import tech.kwik.agent15.alert.DecodeErrorException;
 import tech.kwik.agent15.util.ByteUtils;
-import org.junit.jupiter.api.Test;
+import tech.kwik.agent15.util.CertificateUtils;
 
 import java.nio.ByteBuffer;
 import java.security.cert.X509Certificate;

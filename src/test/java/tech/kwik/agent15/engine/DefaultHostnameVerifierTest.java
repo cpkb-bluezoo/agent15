@@ -20,7 +20,7 @@ package tech.kwik.agent15.engine;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import tech.kwik.agent15.CertificateUtils;
+import tech.kwik.agent15.util.CertificateUtils;
 
 import javax.security.auth.x500.X500Principal;
 import java.security.Principal;
