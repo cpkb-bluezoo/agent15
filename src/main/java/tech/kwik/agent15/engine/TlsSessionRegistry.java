@@ -24,7 +24,6 @@ import tech.kwik.agent15.extension.ClientHelloPreSharedKeyExtension;
 import tech.kwik.agent15.handshake.NewSessionTicketMessage;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 
 public interface TlsSessionRegistry {
 
@@ -38,7 +37,12 @@ public interface TlsSessionRegistry {
 
     TlsSession useSession(ClientHelloPreSharedKeyExtension.PskIdentity pskIdentity);
 
-    byte[] peekSessionData(ClientHelloPreSharedKeyExtension.PskIdentity pskIdentity) throws NoSuchElementException;
+    /**
+     * Returns the session data for the given PSK identity.
+     * @param pskIdentity
+     * @return  the session data for the given PSK identity, or null if no session data was registered for the given PSK identity
+     */
+    byte[] peekSessionData(ClientHelloPreSharedKeyExtension.PskIdentity pskIdentity);
 
     void shutdown();
 }

@@ -29,7 +29,6 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -122,12 +121,7 @@ public class TlsSessionRegistryImpl implements TlsSessionRegistry {
 
     @Override
     public byte[] peekSessionData(ClientHelloPreSharedKeyExtension.PskIdentity pskIdentity) {
-        if (sessions.containsKey(new BytesKey(pskIdentity.getIdentity()))) {
-            return sessions.get(new BytesKey(pskIdentity.getIdentity())).getData();
-        }
-        else {
-            throw new NoSuchElementException();
-        }
+        return sessions.get(new BytesKey(pskIdentity.getIdentity())).getData();
     }
 
     @Override
