@@ -43,7 +43,7 @@ public class ServerNameExtension extends Extension {
             if (extensionDataLength < 2) {
                 throw new DecodeErrorException("incorrect extension length");
             }
-            int serverNameListLength = buffer.getShort();
+            int serverNameListLength = buffer.getShort() & 0xffff;
             if (extensionDataLength != serverNameListLength + 2) {
                 throw new DecodeErrorException("inconsistent length");
             }

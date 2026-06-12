@@ -40,7 +40,7 @@ public class CertificateAuthoritiesExtension extends Extension {
     public CertificateAuthoritiesExtension(ByteBuffer buffer) throws DecodeErrorException {
         int extensionDataLength = parseExtensionHeader(buffer, TlsConstants.ExtensionType.certificate_authorities, 2);
 
-        int authoritiesLength = buffer.getShort();
+        int authoritiesLength = buffer.getShort() & 0xffff;
         if (extensionDataLength != authoritiesLength + 2) {
             throw new DecodeErrorException("inconsistent length fields");
         }

@@ -41,7 +41,7 @@ public class SupportedGroupsExtension extends Extension {
 
     public SupportedGroupsExtension(ByteBuffer buffer) throws DecodeErrorException {
         int extensionDataLength = parseExtensionHeader(buffer, TlsConstants.ExtensionType.supported_groups, 2 + 2);
-        int namedGroupsLength = buffer.getShort();
+        int namedGroupsLength = buffer.getShort() & 0xffff;
         if (extensionDataLength != 2 + namedGroupsLength) {
             throw new DecodeErrorException("inconsistent length");
         }

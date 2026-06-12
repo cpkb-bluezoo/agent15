@@ -50,7 +50,7 @@ public class ApplicationLayerProtocolNegotiationExtension extends Extension {
     public ApplicationLayerProtocolNegotiationExtension(ByteBuffer buffer) throws DecodeErrorException {
         int extensionDataLength = parseExtensionHeader(buffer, TlsConstants.ExtensionType.application_layer_protocol_negotiation.value, 3);
 
-        int protocolsLength = buffer.getShort();
+        int protocolsLength = buffer.getShort() & 0xffff;
         if (protocolsLength != extensionDataLength - 2) {
             throw new DecodeErrorException("inconsistent lengths");
         }
