@@ -20,12 +20,21 @@ package tech.kwik.agent15.engine.impl;
 
 import at.favre.lib.hkdf.HKDF;
 import org.junit.jupiter.api.Test;
+import tech.kwik.agent15.alert.IllegalParameterAlert;
 import tech.kwik.agent15.util.ByteUtils;
 import tech.kwik.agent15.util.FieldGetter;
 
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.PublicKey;
+import java.security.spec.NamedParameterSpec;
+import java.security.spec.XECPublicKeySpec;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 class TlsStateTest {
@@ -54,5 +63,28 @@ class TlsStateTest {
 
         // Then
         assertThat(result).isEqualTo(ByteUtils.hexToBytes("0bd79c1626379ee8b7704a25406f03202cb6dff67e6236ce2308711d83539530"));
+    }
+
+    @Test
+    void x25519LowOrderPointShouldNotProduceAllZeroSharedSecret() throws Exception {
+        // Given
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("XDH");
+        kpg.initialize(new NamedParameterSpec("X25519"));
+        KeyPair clientKeyPair = kpg.generateKeyPair();
+
+        // u=325606... is a torsion point of order 4: X25519(k, u) = 0 for any scalar k
+        KeyFactory kf = KeyFactory.getInstance("XDH");
+        BigInteger torsionU = new BigInteger("39382357235489614581723060781553021112529911719440698176882885853963445705823");
+        PublicKey lowOrderPoint = kf.generatePublic(new XECPublicKeySpec(new NamedParameterSpec("X25519"), torsionU));
+
+        TlsState tlsState = new TlsState(new TranscriptHash(32), null, 16, 32);
+        tlsState.setOwnKey(clientKeyPair.getPrivate());
+        tlsState.setPeerKey(lowOrderPoint);
+
+        assertThatThrownBy(() ->
+                // When
+                tlsState.computeSharedSecret()
+                // Then
+        ).isInstanceOf(IllegalParameterAlert.class);
     }
 }

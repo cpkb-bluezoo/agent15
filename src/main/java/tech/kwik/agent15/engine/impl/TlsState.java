@@ -133,7 +133,7 @@ public class TlsState implements BinderCalculator {
         }
     }
 
-    public void computeSharedSecret() {
+    public void computeSharedSecret() throws IllegalParameterAlert {
         try {
             KeyAgreement keyAgreement;
             if (serverSharedKey instanceof ECPublicKey) {
@@ -151,7 +151,11 @@ public class TlsState implements BinderCalculator {
 
             sharedSecret = keyAgreement.generateSecret();
         }
-        catch (NoSuchAlgorithmException | InvalidKeyException e) {
+        catch (InvalidKeyException e) {
+            // This can be caused by an invalid public key, e.g. a low-order point for X25519.
+            throw new IllegalParameterAlert("invalid public key: " + e.getMessage());
+        }
+        catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("Unsupported crypto: " + e);
         }
     }
