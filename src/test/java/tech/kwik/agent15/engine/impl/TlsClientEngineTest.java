@@ -25,6 +25,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.mockito.internal.util.reflection.FieldReader;
+import tech.kwik.agent15.NewSessionTicket;
 import tech.kwik.agent15.ProtectionKeysType;
 import tech.kwik.agent15.TlsConstants;
 import tech.kwik.agent15.alert.*;
@@ -57,6 +58,7 @@ import java.security.spec.PSSParameterSpec;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Date;
 import java.util.List;
 
 import static java.util.Collections.emptyList;
@@ -236,9 +238,7 @@ class TlsClientEngineTest {
         // Given
         engine.startHandshake();
         TlsConstants.CipherSuite otherCipher = TLS_AES_256_GCM_SHA384;
-        ServerHello serverHello = new ServerHello(otherCipher, List.of(
-                mandatorySupportedVersionExtension,
-                new ServerPreSharedKeyExtension()));
+        ServerHello serverHello = createDefaultServerHello(otherCipher);
 
         assertThat(otherCipher).isNotEqualTo(engineCipher);
         assertThatThrownBy(() ->
@@ -380,7 +380,7 @@ class TlsClientEngineTest {
     @Test
     void serverHelloPreSharedKeyExtensionSelectedIdentityMustBeZero() throws Exception {
         // Given
-        engine.startHandshake();
+        startHandshakeWithPsk();
         // ServerPreSharedKeyExtension with selectedIdentity = 1 is invalid: the client offered only one PSK (index 0)
         // https://www.rfc-editor.org/rfc/rfc8446#section-4.2.11
         // "the server's selected_identity MUST be within the range supplied by the client"
@@ -803,6 +803,20 @@ class TlsClientEngineTest {
         assertThat(messageCaptor.getValue().getSignatureScheme()).isEqualTo(rsa_pss_rsae_sha384);
     }
 
+    private void startHandshakeWithPsk() throws Exception {
+        engine.setNewSessionTicket(createNewSessionTicket());
+        engine.startHandshake();
+    }
+
+    private NewSessionTicket createNewSessionTicket() {
+        NewSessionTicket newSessionTicket = mock(NewSessionTicket.class);
+        when(newSessionTicket.getCipher()).thenReturn(TLS_AES_128_GCM_SHA256);
+        when(newSessionTicket.getTicketCreationDate()).thenReturn(new Date());
+        when(newSessionTicket.getSessionTicketIdentity()).thenReturn(new byte[32]);
+        return newSessionTicket;
+    }
+
+
     private ServerHello createDefaultServerHello() {
         return createDefaultServerHello(engineCipher, emptyList());
     }
@@ -833,6 +847,9 @@ class TlsClientEngineTest {
     }
 
     private void handshakeUpToEncryptedExtensions(List<TlsConstants.SignatureScheme> signatureSchemes, boolean withPsk) throws Exception {
+        if (withPsk) {
+            engine.setNewSessionTicket(createNewSessionTicket());
+        }
         engine.startHandshake(secp256r1, signatureSchemes);
 
         ServerHello serverHello = createDefaultServerHello(withPsk? List.of(new ServerPreSharedKeyExtension(0)): emptyList());
