@@ -75,7 +75,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
 
     boolean serverNameMatchesDnsName(String serverName, String dnsName) {
         if (serverName == null || dnsName == null || serverName.trim().equals("") || dnsName.trim().equals("")) {
-            throw new IllegalArgumentException("can't be null or empty");
+            return false;
         }
 
         if (dnsName.startsWith("*.")) {
