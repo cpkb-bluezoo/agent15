@@ -21,6 +21,7 @@ package tech.kwik.agent15.handshake;
 import tech.kwik.agent15.TlsConstants;
 import tech.kwik.agent15.TlsProtocolException;
 import tech.kwik.agent15.alert.DecodeErrorException;
+import tech.kwik.agent15.alert.HandshakeFailureAlert;
 import tech.kwik.agent15.alert.IllegalParameterAlert;
 import tech.kwik.agent15.extension.Extension;
 import tech.kwik.agent15.log.Logger;
@@ -107,6 +108,7 @@ public class ServerHello extends HandshakeMessage {
         buffer.get(random);
         if (Arrays.equals(random, HelloRetryRequest_SHA256)) {
             Logger.debug("HelloRetryRequest!");
+            throw new HandshakeFailureAlert("HelloRetryRequest is not supported");
         }
 
         int sessionIdLength = buffer.get() & 0xff;

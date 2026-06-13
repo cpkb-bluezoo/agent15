@@ -18,13 +18,14 @@
  */
 package tech.kwik.agent15.handshake;
 
+import org.junit.jupiter.api.Test;
 import tech.kwik.agent15.TlsConstants;
+import tech.kwik.agent15.TlsProtocolException;
 import tech.kwik.agent15.alert.DecodeErrorException;
 import tech.kwik.agent15.alert.IllegalParameterAlert;
 import tech.kwik.agent15.extension.KeyShareExtension;
 import tech.kwik.agent15.extension.SupportedVersionsExtension;
 import tech.kwik.agent15.util.ByteUtils;
-import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -153,6 +154,21 @@ class ServerHelloTest {
         assertThatThrownBy(() ->
                 new ServerHello().parse(ByteBuffer.wrap(data), data.length)
         ).isInstanceOf(DecodeErrorException.class);
+    }
+
+    @Test
+    void parseServerHelloWithHelloRetryRequestRandomShouldThrow() throws Exception {
+        // The ServerHello "Random" with the special HRR sentinel value indicates HelloRetryRequest.
+        String helloRetryRequestRandom = "CF21AD74E59A6111BE1D8C021E65B891C2A211167ABB8C5E079E09E2C8A8339C";
+        //                            type    length legacy_v  random                              sid cipher cmp
+        String serverHelloHex = "02 000077  0303 " + helloRetryRequestRandom + "  00  1301   00";
+        String serverHello = addMandatoryExtensions(serverHelloHex.replaceAll(" ", ""));
+
+        byte[] data = ByteUtils.hexToBytes(serverHello);
+
+        assertThatThrownBy(() ->
+                new ServerHello().parse(ByteBuffer.wrap(data), data.length)
+        ).isInstanceOf(TlsProtocolException.class);
     }
 
     @Test
