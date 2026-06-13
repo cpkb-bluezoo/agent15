@@ -102,6 +102,16 @@ class NewSessionTicketMessageTest {
     }
 
     @Test
+    void newSessionTicketMessageMustRejectRecognizedButIllegalExtension() throws Exception {
+        // Wire bytes:                                  lifetime age_add  nonce       ticket        exts server_name ext
+        byte[] rawData = ByteUtils.hexToBytes("04000019 00093a80 fab00e11 04 01020304 0004 01020304 0004 0000 0000");
+
+        assertThatThrownBy(() ->
+                new NewSessionTicketMessage().parse(ByteBuffer.wrap(rawData))
+        ).isInstanceOf(IllegalParameterAlert.class);
+    }
+
+    @Test
     void newSessionTicketMessageMayContainGreasedExtensionType() throws Exception {
         // ...                                          lifetime age_add  nonce       ticket
         byte[] rawData = ByteUtils.hexToBytes("0400001f 00093a80 fab00e11 04 01020304 0004 01020304"
