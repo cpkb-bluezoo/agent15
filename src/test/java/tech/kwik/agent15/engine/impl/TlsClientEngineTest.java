@@ -394,6 +394,28 @@ class TlsClientEngineTest {
     }
 
     @Test
+    void serverHelloPreSharedKeyExtensionRequiresClientToHaveOfferedPsk() throws Exception {
+        // https://www.rfc-editor.org/rfc/rfc8446#section-4.1.4
+        // "Upon receiving such an extension [that the endpoint did not request], an endpoint MUST abort the handshake
+        //  with an "unsupported_extension" alert."
+        // https://www.rfc-editor.org/rfc/rfc8446#section-4.2
+        // "Implementations MUST NOT send extension responses if the remote endpoint did not send the corresponding
+        //  extension requests..."
+        // The client started a handshake without offering any PSK (no setNewSessionTicket call), so the server
+        // including a pre_shared_key in ServerHello is a protocol violation that the client MUST reject.
+
+        // Given
+        engine.startHandshake();
+        ServerHello serverHello = createDefaultServerHello(List.of(new ServerPreSharedKeyExtension(0)));
+
+        assertThatThrownBy(() ->
+                // When
+                engine.received(serverHello, ProtectionKeysType.None))
+                // Then
+                .isInstanceOf(ErrorAlert.class);
+    }
+
+    @Test
     void certificateRequestShouldNotContainDuplicateExtensions() throws Exception {
         // Given
         handshakeUpToCertificate();

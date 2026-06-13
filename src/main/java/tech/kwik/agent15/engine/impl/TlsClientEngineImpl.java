@@ -259,6 +259,10 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
                 .filter(extension -> extension instanceof ServerPreSharedKeyExtension)
                 .findFirst();
 
+        if (newSessionTicket == null && preSharedKey.isPresent()) {
+            throw new UnsupportedExtensionAlert("unexpected pre_shared_key extension");
+        }
+
         // https://tools.ietf.org/html/rfc8446#section-4.1.3
         // "ServerHello messages additionally contain either the "pre_shared_key" extension or the "key_share" extension,
         // or both (when using a PSK with (EC)DHE key establishment)."
