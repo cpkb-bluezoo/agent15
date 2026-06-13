@@ -51,7 +51,7 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
             }
             else {
                 // No Subject Alternative Names extension in the certificate, so fall back to matching the server name against the Common Name (CN) in the Subject DN.
-                return verifyHostname(serverName, serverCertificate.getSubjectDN());
+                return verifyHostname(serverName, serverCertificate.getSubjectX500Principal());
             }
         }
         catch (CertificateParsingException e) {
