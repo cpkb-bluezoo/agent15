@@ -324,7 +324,7 @@ public class KeyShareExtension extends Extension {
         try {
             // Encoding is little endian, so reverse the bytes.
             reverse(keyData);
-            BigInteger u = new BigInteger(keyData);
+            BigInteger u = new BigInteger(1, keyData);
             KeyFactory kf = KeyFactory.getInstance("XDH");
             NamedParameterSpec paramSpec = new NamedParameterSpec(curve.name().toUpperCase());
             XECPublicKeySpec pubSpec = new XECPublicKeySpec(paramSpec, u);
