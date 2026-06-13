@@ -36,14 +36,22 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
     @Override
     public boolean verify(String serverName, X509Certificate serverCertificate) {
         try {
-            boolean matchesSan = verifyHostname(serverName, serverCertificate.getSubjectAlternativeNames());
-            if (matchesSan) {
-                return true;
+            // https://datatracker.ietf.org/doc/html/rfc6125#section-6.3
+            // "Security Warning: A client MUST NOT seek a match for a reference identifier of CN-ID if the presented
+            //  identifiers include a DNS-ID, SRV-ID, URI-ID, or any application-specific identifier types supported by the client."
+            // Note that DNS-ID, SRV-ID, URI-ID are all types of Subject Alternative Name entries, so if there are any
+            // Subject Alternative Name entries, then the server name must match one of those and the Common Name (CN)
+            // in the Subject DN is ignored.
+            if (serverCertificate.getSubjectAlternativeNames() != null) {
+                boolean matchesSan = verifyHostname(serverName, serverCertificate.getSubjectAlternativeNames());
+                return matchesSan;
             }
             else {
+                // No Subject Alternative Names extension in the certificate, so fall back to matching the server name against the Common Name (CN) in the Subject DN.
                 return verifyHostname(serverName, serverCertificate.getSubjectDN());
             }
-        } catch (CertificateParsingException e) {
+        }
+        catch (CertificateParsingException e) {
             Logger.debug("Retrieving subject alternative names from certificate failed");
             return false;
         }

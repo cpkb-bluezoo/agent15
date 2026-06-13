@@ -28,6 +28,8 @@ import java.security.cert.X509Certificate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 
 class DefaultHostnameVerifierTest {
@@ -158,4 +160,20 @@ class DefaultHostnameVerifierTest {
         assertThat(result).isFalse();
     }
 
+    @Test
+    void whenSanIsPresentCnMustNotBeUsedAsFallback() throws Exception {
+        // A certificate with a non-matching dNSName SAN entry must not be accepted just because
+        // the CN happens to match the requested server name.
+
+        // Given
+        X509Certificate certificate = mock(X509Certificate.class);
+        when(certificate.getSubjectAlternativeNames()).thenReturn(List.of(List.of(2, "other.example.org")));
+        when(certificate.getSubjectDN()).thenReturn((Principal) () -> "CN=legitimate.com");
+
+        // When
+        boolean matches = verifier.verify("legitimate.com", certificate);
+
+        // Then
+        assertThat(matches).isFalse();
+    }
 }
