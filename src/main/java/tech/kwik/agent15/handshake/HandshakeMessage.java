@@ -32,6 +32,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static tech.kwik.agent15.TlsConstants.HandshakeType.*;
+
 /**
  * https://datatracker.ietf.org/doc/html/rfc8446#section-4
  */
@@ -85,23 +87,37 @@ public abstract class HandshakeMessage {
             }
             int extensionStartPosition = buffer.position();
 
+            // https://datatracker.ietf.org/doc/html/rfc8446#section-4.2
+            // "+--------------------------------------------------+-------------+
+            //   | Extension                                        |     TLS 1.3 |
+            //   +--------------------------------------------------+-------------+"
             if (extensionType == TlsConstants.ExtensionType.server_name.value) {
+                // "| server_name [RFC6066]                            |      CH, EE |"
+                check(context, client_hello, encrypted_extensions);
                 extensions.add(new ServerNameExtension(buffer));
             }
             else if (extensionType == TlsConstants.ExtensionType.supported_groups.value) {
+                // "| supported_groups [RFC7919]                       |      CH, EE |"
+                check(context, client_hello, encrypted_extensions);
                 extensions.add(new SupportedGroupsExtension(buffer));
             }
             else if (extensionType == TlsConstants.ExtensionType.signature_algorithms.value) {
+                // "| signature_algorithms (RFC 8446)                  |      CH, CR |"
+                check(context, client_hello, certificate_request);
                 extensions.add(new SignatureAlgorithmsExtension(buffer));
             }
             else if (extensionType == TlsConstants.ExtensionType.application_layer_protocol_negotiation.value) {
+                // "| application_layer_protocol_negotiation [RFC7301] |      CH, EE |"
+                check(context, client_hello, encrypted_extensions);
                 extensions.add(new ApplicationLayerProtocolNegotiationExtension(buffer));
             }
             else if (extensionType == TlsConstants.ExtensionType.pre_shared_key.value) {
-                if (context == TlsConstants.HandshakeType.server_hello) {
+                // "| pre_shared_key (RFC 8446)                        |      CH, SH |"
+                check(context, client_hello, server_hello);
+                if (context == server_hello) {
                     extensions.add(new ServerPreSharedKeyExtension().parse(buffer));
                 }
-                else if (context == TlsConstants.HandshakeType.client_hello) {
+                else if (context == client_hello) {
                     extensions.add(new ClientHelloPreSharedKeyExtension().parse(buffer));
                 }
                 else {
@@ -112,18 +128,28 @@ public abstract class HandshakeMessage {
                 }
             }
             else if (extensionType == TlsConstants.ExtensionType.early_data.value) {
+                // "| early_data (RFC 8446)                            | CH, EE, NST |"
+                check(context, client_hello, encrypted_extensions, new_session_ticket);
                 extensions.add(new EarlyDataExtension(buffer, context));
             }
             else if (extensionType == TlsConstants.ExtensionType.supported_versions.value) {
+                // "| supported_versions (RFC 8446)                    | CH, SH, HRR |"
+                check(context, client_hello, server_hello);
                 extensions.add(new SupportedVersionsExtension(buffer, context));
             }
             else if (extensionType == TlsConstants.ExtensionType.psk_key_exchange_modes.value) {
+                // " | psk_key_exchange_modes (RFC 8446)                |          CH |"
+                check(context, client_hello);
                 extensions.add(new PskKeyExchangeModesExtension(buffer));
             }
             else if (extensionType == TlsConstants.ExtensionType.certificate_authorities.value) {
+                // "| certificate_authorities (RFC 8446)               |      CH, CR |"
+                check(context, client_hello, certificate_request);
                 extensions.add(new CertificateAuthoritiesExtension(buffer));
             }
             else if (extensionType == TlsConstants.ExtensionType.key_share.value) {
+                // "| key_share (RFC 8446)                             | CH, SH, HRR |"
+                check(context, client_hello, server_hello);
                 extensions.add(new KeyShareExtension(buffer, context));
             }
             else {
@@ -145,6 +171,18 @@ public abstract class HandshakeMessage {
             remainingExtensionsLength -= extensionLength;
         }
         return extensions;
+    }
+
+    private static void check(TlsConstants.HandshakeType context, TlsConstants.HandshakeType... allowedHandshakeTypes) throws IllegalParameterAlert {
+        // https://datatracker.ietf.org/doc/html/rfc8446#section-4.2
+        // "If an implementation receives an extension which it recognizes and which is not specified for
+        //  the message in which it appears, it MUST abort the handshake with an "illegal_parameter" alert."
+        for (TlsConstants.HandshakeType allowed : allowedHandshakeTypes) {
+            if (context == allowed) {
+                return;
+            }
+        }
+        throw new IllegalParameterAlert("Extension not allowed in " + context);
     }
 
     /**
