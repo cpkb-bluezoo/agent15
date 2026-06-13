@@ -80,7 +80,7 @@ public class EncryptedExtensions extends HandshakeMessage {
             throw new DecodeErrorException("Incorrect message length");
         }
 
-        extensions = parseExtensions(buffer, TlsConstants.HandshakeType.server_hello, customExtensionParser);
+        extensions = parseExtensions(buffer, TlsConstants.HandshakeType.encrypted_extensions, customExtensionParser);
 
         // Raw bytes are needed for computing the transcript hash
         buffer.position(start);

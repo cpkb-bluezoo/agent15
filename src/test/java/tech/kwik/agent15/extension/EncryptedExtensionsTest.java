@@ -18,17 +18,18 @@
  */
 package tech.kwik.agent15.extension;
 
+import org.junit.jupiter.api.Test;
 import tech.kwik.agent15.alert.DecodeErrorException;
+import tech.kwik.agent15.alert.IllegalParameterAlert;
 import tech.kwik.agent15.handshake.EncryptedExtensions;
 import tech.kwik.agent15.util.ByteUtils;
-import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 
-import static tech.kwik.agent15.TlsConstants.SignatureScheme.rsa_pkcs1_sha256;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static tech.kwik.agent15.TlsConstants.SignatureScheme.rsa_pkcs1_sha256;
 
 public class EncryptedExtensionsTest {
 
@@ -91,4 +92,16 @@ public class EncryptedExtensionsTest {
         assertThat(data).isEqualTo(expected);
     }
 
+    @Test
+    void encryptedExtensionsMustRejectPreSharedKeyExtension() throws Exception {
+        // Wire bytes:
+        //   msg type 0x08, msg length 0x000008,
+        //   extensions list size 0x0006,
+        //     pre_shared_key extension (type=0x0029, length=0x0002, selected_identity=0x0000)
+        byte[] data = ByteUtils.hexToBytes("08" + "000008" + "0006" + "0029" + "0002" + "0000");
+
+        assertThatThrownBy(() ->
+                new EncryptedExtensions().parse(ByteBuffer.wrap(data), data.length)
+        ).isInstanceOf(IllegalParameterAlert.class);
+    }
 }
