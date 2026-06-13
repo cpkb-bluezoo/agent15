@@ -8,4 +8,5 @@ module tech.kwik.agent15 {
     exports tech.kwik.agent15.handshake;
 
     requires at.favre.lib.hkdf;
+    requires java.naming;
 }

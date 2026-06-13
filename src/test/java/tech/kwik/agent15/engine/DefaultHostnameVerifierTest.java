@@ -161,6 +161,66 @@ class DefaultHostnameVerifierTest {
     }
 
     @Test
+    void sanDnsNameMatchShouldBeCaseInsensitive() {
+        List<List<?>> subjectAlternativeNames = List.of(List.of(2, "Example.COM"));
+        boolean result = verifier.verifyHostname("example.com", subjectAlternativeNames);
+
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void wildcardSanMatchShouldBeCaseInsensitive() {
+        List<List<?>> subjectAlternativeNames = List.of(List.of(2, "*.Example.COM"));
+        boolean result = verifier.verifyHostname("Sub.example.com", subjectAlternativeNames);
+
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void emptySanShouldNotMatch() {
+        List<List<?>> subjectAlternativeNames = List.of();
+        boolean result = verifier.verifyHostname("example.com", subjectAlternativeNames);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void cnMatchShouldBeCaseInsensitive() {
+        Principal dn = () -> "CN=Example.COM";
+        boolean result = verifier.verifyHostname("example.com", dn);
+
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void dnWithAttributeValueLookingLikeCnShouldNotMatch() {
+        // A naive comma-split DN parser does not honour RFC 2253 escaping. If an attacker
+        // can influence a non-CN attribute (e.g. the Organization), they could embed an
+        // escaped comma followed by "CN=victim.com" inside that value. The split-on-comma
+        // parser would then see "CN=victim.com" as a separate RDN even though the actual
+        // leaf CN is "attacker.com".
+        //
+        // String literal: O=acme\,CN=victim.com,CN=attacker.com
+        Principal dn = () -> "O=acme\\,CN=victim.com,CN=attacker.com";
+        boolean result = verifier.verifyHostname("victim.com", dn);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void dnWithMultipleCnShouldOnlyMatchLeafCn() {
+        // RFC 2253 lists RDNs from leaf (most specific) to root. For certificate identity
+        // only the leaf CN should be considered. Here the leaf CN is "attacker.com"; the
+        // second "CN=victim.com" is some other CN-typed RDN higher up in the tree. A
+        // connection to "victim.com" must not be accepted just because "victim.com" appears
+        // anywhere in the DN.
+        Principal dn = () -> "CN=attacker.com,CN=victim.com,O=SomeOrg, L=SomeCity, C=US";
+        boolean result = verifier.verifyHostname("victim.com", dn);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
     void whenSanIsPresentCnMustNotBeUsedAsFallback() throws Exception {
         // A certificate with a non-matching dNSName SAN entry must not be accepted just because
         // the CN happens to match the requested server name.

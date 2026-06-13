@@ -20,12 +20,15 @@ package tech.kwik.agent15.engine;
 
 import tech.kwik.agent15.log.Logger;
 
+import javax.naming.InvalidNameException;
+import javax.naming.ldap.LdapName;
+import javax.naming.ldap.Rdn;
 import java.security.Principal;
 import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * A hostname verifier that requires that the server name equals the CN part of the certificate's subject DN,
@@ -77,21 +80,30 @@ public class DefaultHostnameVerifier implements HostnameVerifier {
 
         if (dnsName.startsWith("*.")) {
             int firstFullStop = serverName.indexOf(".");
-            boolean matchesTrueSubdomain = firstFullStop > 0 && serverName.substring(firstFullStop + 1).equals(dnsName.substring(2));
+            boolean matchesTrueSubdomain = firstFullStop > 0 && serverName.substring(firstFullStop + 1).equalsIgnoreCase(dnsName.substring(2));
             return matchesTrueSubdomain;
         }
         else {
-            return serverName.equals(dnsName);
+            return serverName.equalsIgnoreCase(dnsName);
         }
     }
 
     boolean verifyHostname(String serverName, Principal subjectDN) {
-        String dn = subjectDN.getName();
-        boolean matches = Arrays.stream(dn.split(","))
-                .map(s -> s.trim())
-                .filter(s -> s.startsWith("CN="))
-                .map(s -> s.substring(3))
-                .anyMatch(s -> s.equals(serverName));
-        return matches;
+        try {
+            LdapName dn = new LdapName(subjectDN.getName());
+            List<Rdn> cnRdns = dn.getRdns().stream()
+                    .filter(rdn -> rdn.getType().equalsIgnoreCase("CN"))
+                    .collect(Collectors.toList());
+            if (! cnRdns.isEmpty()) {
+                Rdn leafCnRdn = cnRdns.get(cnRdns.size() - 1);
+                return serverName.equalsIgnoreCase(leafCnRdn.getValue().toString());
+            }
+            else {
+                return false;
+            }
+        }
+        catch (InvalidNameException e) {
+            return false;
+        }
     }
 }
