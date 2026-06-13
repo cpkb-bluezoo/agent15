@@ -61,6 +61,7 @@ public class ClientHello extends HandshakeMessage {
     private final byte[] data;
     private final int pskExtensionStartPosition;
     private byte[] clientRandom;
+    private byte[] sessionId = new byte[0];
 
     private List<TlsConstants.CipherSuite> cipherSuites = new ArrayList<>();
     private List<Extension> extensions;
@@ -197,7 +198,6 @@ public class ClientHello extends HandshakeMessage {
         secureRandom.nextBytes(clientRandom);
         buffer.put(clientRandom);
 
-        byte[] sessionId;
         if (compatibilityMode) {
             sessionId = new byte[32];
             random.nextBytes(sessionId);
@@ -294,6 +294,10 @@ public class ClientHello extends HandshakeMessage {
 
     public byte[] getClientRandom() {
         return clientRandom;
+    }
+
+    public byte[] getSessionId() {
+        return sessionId;
     }
 
     public List<TlsConstants.CipherSuite> getCipherSuites() {

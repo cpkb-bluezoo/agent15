@@ -394,6 +394,27 @@ class TlsClientEngineTest {
     }
 
     @Test
+    void serverHelloLegacySessionIdEchoMustMatchClientHelloSessionId() throws Exception {
+        // Given: compatibility mode causes the client to send a random 32-byte legacy_session_id.
+        engine.setCompatibilityMode(true);
+        engine.startHandshake();
+
+        // Build a ServerHello whose legacy_session_id_echo is 32 zero bytes — virtually guaranteed not
+        // to match the random value the client just sent in ClientHello.
+        //                              type    length legacy_v  random                                                            sid_len sid (32 zero bytes)                                              cipher cmp  extensions...
+        String serverHelloHex = ("02 000097 0303 1219785ef730198b9d915575532c20dea24fa42b20b26724f988d74257404185 20 0000000000000000000000000000000000000000000000000000000000000000 1301 00").replaceAll(" ", "");
+        String mandatoryExtensions = ("004f 002b00020304 003300450017004104ace3b035eba5dd75860925b2c9b206656f2d1590f8c596d96a2a91adb442b378240002c8ef8360ba6104033c02eb3ab9ebcce036c735892697dda158f91c786e").replaceAll(" ", "");
+        byte[] data = ByteUtils.hexToBytes(serverHelloHex + mandatoryExtensions);
+        ServerHello serverHello = new ServerHello().parse(ByteBuffer.wrap(data), data.length);
+
+        assertThatThrownBy(() ->
+                // When
+                engine.received(serverHello, ProtectionKeysType.None))
+                // Then
+                .isInstanceOf(IllegalParameterAlert.class);
+    }
+
+    @Test
     void serverHelloPreSharedKeyExtensionRequiresClientToHaveOfferedPsk() throws Exception {
         // https://www.rfc-editor.org/rfc/rfc8446#section-4.1.4
         // "Upon receiving such an extension [that the endpoint did not request], an endpoint MUST abort the handshake

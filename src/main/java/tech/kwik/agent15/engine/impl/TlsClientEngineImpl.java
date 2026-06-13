@@ -41,6 +41,7 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -191,6 +192,13 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
     public void received(ServerHello serverHello, ProtectionKeysType protectedBy) throws TlsProtocolException {
         if (status != Status.WaitServerHello) {
             throw new UnexpectedMessageAlert("incorrect protection level");
+        }
+
+        // https://www.rfc-editor.org/rfc/rfc8446.html#section-4.1.3
+        // "A client which receives a legacy_session_id_echo field that does not match whatit sent in the ClientHello
+        //  MUST abort the handshake with an "illegal_parameter" alert."
+        if (!Arrays.equals(serverHello.getLegacySessionIdEcho(), clientHello.getSessionId())) {
+            throw new IllegalParameterAlert("legacy_session_id_echo does not match");
         }
 
         // https://www.rfc-editor.org/rfc/rfc8446.html#section-4.2

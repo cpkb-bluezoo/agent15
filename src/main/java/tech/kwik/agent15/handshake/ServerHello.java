@@ -52,6 +52,7 @@ public class ServerHello extends HandshakeMessage {
     private byte[] raw;
 
     private byte[] random;
+    private byte[] legacySessionIdEcho = new byte[0];
     private TlsConstants.CipherSuite cipherSuite;
     private PublicKey serverSharedKey;
     private short tlsVersion;
@@ -115,8 +116,8 @@ public class ServerHello extends HandshakeMessage {
         if (sessionIdLength > 32) {
             throw new DecodeErrorException("session id length exceeds 32");
         }
-        byte[] legacySessionIdEcho = new byte[sessionIdLength];
-        buffer.get(legacySessionIdEcho);   // TODO: must match, see 4.1.3
+        legacySessionIdEcho = new byte[sessionIdLength];
+        buffer.get(legacySessionIdEcho);
 
         int cipherSuiteCode = buffer.getShort();
         Arrays.stream(TlsConstants.CipherSuite.values())
@@ -151,6 +152,10 @@ public class ServerHello extends HandshakeMessage {
 
     public byte[] getRandom() {
         return random;
+    }
+
+    public byte[] getLegacySessionIdEcho() {
+        return legacySessionIdEcho;
     }
 
     public TlsConstants.CipherSuite getCipherSuite() {
