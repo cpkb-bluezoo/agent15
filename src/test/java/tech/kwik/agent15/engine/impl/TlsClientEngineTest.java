@@ -873,6 +873,34 @@ class TlsClientEngineTest {
     }
 
 
+    @Test
+    void certificateWithSecp384r1KeyShouldSupportEcdsaSecp384r1Sha384() throws Exception {
+        // Given
+        X509Certificate cert = CertificateUtils.inflateCertificate(encodedSampleEcdsa384Certificate);
+
+        // When/Then: the cert's public key is on secp384r1, so it must support ecdsa_secp384r1_sha384
+        assertThat(engine.keyMatchesSignatureAlgorithm(cert.getPublicKey(), ecdsa_secp384r1_sha384)).isTrue();
+    }
+
+    @Test
+    void certificateWithSecp384r1KeyShouldNotSupportEcdsaSecp256r1Sha256() throws Exception {
+        // Given
+        X509Certificate cert = CertificateUtils.inflateCertificate(encodedSampleEcdsa384Certificate);
+
+        // When/Then: the cert's public key is on secp384r1, so it must NOT support ecdsa_secp256r1_sha256
+        // (a P-384 key cannot produce a P-256 signature)
+        assertThat(engine.keyMatchesSignatureAlgorithm(cert.getPublicKey(), ecdsa_secp256r1_sha256)).isFalse();
+    }
+
+    @Test
+    void certificateWithSecp521r1KeyShouldSupportEcdsaSecp521r1Sha512() throws Exception {
+        // Given
+        X509Certificate cert = CertificateUtils.inflateCertificate(encodedSampleEcdsa512Certificate);
+
+        // When/Then
+        assertThat(engine.keyMatchesSignatureAlgorithm(cert.getPublicKey(), ecdsa_secp521r1_sha512)).isTrue();
+    }
+
     private ServerHello createDefaultServerHello() {
         return createDefaultServerHello(engineCipher, emptyList());
     }

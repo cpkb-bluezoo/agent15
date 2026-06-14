@@ -41,6 +41,7 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.ECPublicKey;
+import java.security.interfaces.RSAPublicKey;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.ECParameterSpec;
 import java.security.spec.InvalidParameterSpecException;
@@ -515,46 +516,55 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
     }
 
     /**
-     * Checks that curve of the given key matches what the scheme requires, throwing an exception when it does not.
+     * Checks that if the key is an EC key, the curve matches what the scheme requires, throwing an exception when it does not.
      * @param publicKey
      * @param signatureScheme
      * @throws IllegalParameterAlert
      */
-    private void checkEcKeyMatchesScheme(PublicKey publicKey, TlsConstants.SignatureScheme signatureScheme) throws IllegalParameterAlert {
-        if (signatureScheme != ecdsa_secp256r1_sha256 && signatureScheme != ecdsa_secp384r1_sha384 && signatureScheme != ecdsa_secp521r1_sha512) {
-            return;
+    private void checkKeyMatchesScheme(PublicKey publicKey, TlsConstants.SignatureScheme signatureScheme) throws IllegalParameterAlert {
+        if (! keyMatchesSignatureAlgorithm(publicKey, signatureScheme)) {
+            throw new IllegalParameterAlert("public key type does not match signature scheme");
         }
-        if (! (publicKey instanceof ECPublicKey)) {
-            throw new IllegalParameterAlert("ECDSA signature scheme requires EC public key");
+    }
+
+    boolean keyMatchesSignatureAlgorithm(PublicKey publicKey, TlsConstants.SignatureScheme signatureScheme) {
+        if (publicKey instanceof RSAPublicKey) {
+            return List.of(rsa_pss_rsae_sha256, rsa_pss_rsae_sha384, rsa_pss_rsae_sha512).contains(signatureScheme);
         }
-        String expectedCurveName;
-        if (signatureScheme == ecdsa_secp256r1_sha256) {
-            expectedCurveName = "secp256r1";
-        }
-        else if (signatureScheme == ecdsa_secp384r1_sha384) {
-            expectedCurveName = "secp384r1";
-        }
-        else {  // signatureScheme == ecdsa_secp521r1_sha512
-            expectedCurveName = "secp521r1";
-        }
-        try {
-            AlgorithmParameters params = AlgorithmParameters.getInstance("EC");
-            params.init(new ECGenParameterSpec(expectedCurveName));
-            ECParameterSpec expectedSpec = params.getParameterSpec(ECParameterSpec.class);
-            ECParameterSpec actualSpec = ((ECPublicKey) publicKey).getParams();
-            if (!expectedSpec.getCurve().equals(actualSpec.getCurve())) {
-                throw new IllegalParameterAlert("EC key curve does not match signature scheme");
+        else if (publicKey instanceof ECPublicKey) {
+            String expectedCurveName;
+            if (signatureScheme == ecdsa_secp256r1_sha256) {
+                expectedCurveName = "secp256r1";
+            }
+            else if (signatureScheme == ecdsa_secp384r1_sha384) {
+                expectedCurveName = "secp384r1";
+            }
+            else if (signatureScheme == ecdsa_secp521r1_sha512) {
+                expectedCurveName = "secp521r1";
+            }
+            else {
+                return false;
+            }
+            try {
+                AlgorithmParameters params = AlgorithmParameters.getInstance("EC");
+                params.init(new ECGenParameterSpec(expectedCurveName));
+                ECParameterSpec expectedSpec = params.getParameterSpec(ECParameterSpec.class);
+                ECParameterSpec actualSpec = ((ECPublicKey) publicKey).getParams();
+                return expectedSpec.getCurve().equals(actualSpec.getCurve());
+            }
+            catch (NoSuchAlgorithmException | InvalidParameterSpecException e) {
+                // NoSuchAlgorithmException from getInstance("EC"),
+                // InvalidParameterSpecException from init(ECGenParameterSpec) and getParameterSpec(ECParameterSpec)
+                throw new RuntimeException(e);
             }
         }
-        catch (NoSuchAlgorithmException | InvalidParameterSpecException e) {
-            // NoSuchAlgorithmException from getInstance("EC"),
-            // InvalidParameterSpecException from init(ECGenParameterSpec) and getParameterSpec(ECParameterSpec)
-            throw new RuntimeException(e);
+        else {
+            return false;
         }
     }
 
     protected boolean verifySignature(byte[] signatureToVerify, TlsConstants.SignatureScheme signatureScheme, Certificate certificate, byte[] transcriptHash) throws HandshakeFailureAlert, IllegalParameterAlert {
-        checkEcKeyMatchesScheme(certificate.getPublicKey(), signatureScheme);
+        checkKeyMatchesScheme(certificate.getPublicKey(), signatureScheme);
         // https://tools.ietf.org/html/rfc8446#section-4.4.3
         // "The digital signature is then computed over the concatenation of:
         //   -  A string that consists of octet 32 (0x20) repeated 64 times
@@ -627,31 +637,19 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
 
         // When certificate is sent, also send a certificate verify message
         if (certificateWithKey != null) {
+            PublicKey publicKey = certificateWithKey.getCertificate().getPublicKey();
             TlsConstants.SignatureScheme selectedSignatureScheme = serverSupportedSignatureSchemes.stream()
                     .filter(supportedSignatures::contains)
-                    .filter(scheme -> certificateSupportsSignature(certificateWithKey.getCertificate(), scheme))
+                    .filter(scheme -> keyMatchesSignatureAlgorithm(publicKey, scheme))
                     .findFirst()
                     .orElseThrow(() -> new HandshakeFailureAlert("failed to negotiate signature scheme"));
 
             PrivateKey privateKey = certificateWithKey.getPrivateKey();
-            byte[] hash = transcriptHash.getClientHash(TlsConstants.HandshakeType.certificate);
+            byte[] hash = transcriptHash.getClientHash(tech.kwik.agent15.TlsConstants.HandshakeType.certificate);
             byte[] signature = computeSignature(hash, privateKey, selectedSignatureScheme, true);
             CertificateVerifyMessage certificateVerify = new CertificateVerifyMessage(selectedSignatureScheme, signature);
             sender.send(certificateVerify);
             transcriptHash.recordClient(certificateVerify);
-        }
-    }
-
-    private boolean certificateSupportsSignature(X509Certificate cert, TlsConstants.SignatureScheme signatureScheme) {
-        String certSignAlg = cert.getSigAlgName();
-        if (certSignAlg.toLowerCase().contains("withrsa")) {
-            return List.of(rsa_pss_rsae_sha256, rsa_pss_rsae_sha384).contains(signatureScheme);
-        }
-        else if (certSignAlg.toLowerCase().contains("withecdsa")) {
-            return List.of(ecdsa_secp256r1_sha256).contains(signatureScheme);
-        }
-        else {
-            return false;
         }
     }
 
