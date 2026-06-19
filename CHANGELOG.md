@@ -1,5 +1,15 @@
 # Releases
 
+## 3.3 (2026-06-19)
+
+Security hardening and protocol correctness fixes.
+
+- Client only keeps two new session tickets.
+- Improve EC curve detection; TlsServerEngineFactory constructor with curve parameter is now deprecated because 
+  it should not (never) be necessary anymore to manually pass the curve name.
+- Fixed that DefaultHostnameVerifier should compare hostnames ignoring case. 
+- Fixed that DefaultHostnameVerifier should not fallback to CN when SAN extension is present.
+
 ## 3.2 (2026-04-18)
 
 Security hardening and protocol correctness fixes.
