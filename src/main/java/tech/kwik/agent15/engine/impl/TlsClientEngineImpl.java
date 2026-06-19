@@ -195,8 +195,11 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
      */
     @Override
     public void received(ServerHello serverHello, ProtectionKeysType protectedBy) throws TlsProtocolException {
-        if (status != Status.WaitServerHello) {
+        if (protectedBy != ProtectionKeysType.None) {
             throw new UnexpectedMessageAlert("incorrect protection level");
+        }
+        if (status != Status.WaitServerHello) {
+            throw new UnexpectedMessageAlert("unexpected server hello message");
         }
 
         // https://www.rfc-editor.org/rfc/rfc8446.html#section-4.1.3
