@@ -110,6 +110,21 @@ class TranscriptHashTest {
         assertThat(transcriptHash.getServerHash(TlsConstants.HandshakeType.finished)).isEqualTo(expected);
     }
 
+    @Test
+    void correspondingHandshakeTypesHaveSameOrdinal() {
+        for (TranscriptHash.ExtendedHandshakeType extendedType : TranscriptHash.ExtendedHandshakeType.values()) {
+            TlsConstants.HandshakeType handshakeType;
+            try {
+                handshakeType = TlsConstants.HandshakeType.valueOf(extendedType.name());
+            } catch (IllegalArgumentException noCorrespondingValue) {
+                continue;
+            }
+            assertThat(extendedType.ordinal())
+                    .as("ordinal of %s", extendedType.name())
+                    .isEqualTo(handshakeType.ordinal());
+        }
+    }
+
     private byte[] computeHash(byte[]... elements) throws Exception {
         String hashAlgorithm = "SHA-256";
         MessageDigest hashFunction = MessageDigest.getInstance(hashAlgorithm);
