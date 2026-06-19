@@ -762,6 +762,29 @@ class TlsClientEngineTest {
     }
 
     @Test
+    void clientEngineShouldKeepOnlyTheLastTwoNewSessionTickets() throws Exception {
+        // Given: a completed handshake, so resumption secrets are available and NewSessionTicketMessages can be processed.
+        handshakeUpToFinished();
+        TlsClientEngineImpl completedEngine = Mockito.spy(engine);
+        Mockito.doReturn(new byte[32]).when(completedEngine).computeFinishedVerifyData(ArgumentMatchers.any(), ArgumentMatchers.any());
+        completedEngine.received(new FinishedMessage(new byte[32]), ProtectionKeysType.Handshake);
+
+        // When: the server sends three NewSessionTicketMessages
+        NewSessionTicketMessage ticket1 = new NewSessionTicketMessage(3600, 0x01010101L, new byte[] { 1 }, new byte[] { 0x0a });
+        NewSessionTicketMessage ticket2 = new NewSessionTicketMessage(3600, 0x02020202L, new byte[] { 2 }, new byte[] { 0x0b });
+        NewSessionTicketMessage ticket3 = new NewSessionTicketMessage(3600, 0x03030303L, new byte[] { 3 }, new byte[] { 0x0c });
+        completedEngine.received(ticket1, ProtectionKeysType.Application);
+        completedEngine.received(ticket2, ProtectionKeysType.Application);
+        completedEngine.received(ticket3, ProtectionKeysType.Application);
+
+        // Then: only the last two tickets are retained; the oldest is evicted.
+        List<NewSessionTicket> tickets = completedEngine.getNewSessionTickets();
+        assertThat(tickets).hasSize(2);
+        assertThat(tickets).extracting(NewSessionTicket::getTicketAgeAdd)
+                .containsExactly(0x02020202L, 0x03030303L);
+    }
+
+    @Test
     void certificateRequestMessageShouldNotBeReceivedBeforeEncryptedExtensions() throws Exception {
         // Given
         engine.startHandshake();

@@ -69,6 +69,9 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
 
     private static final Charset ISO_8859_1 = Charset.forName("ISO-8859-1");
 
+    // The maximum number of (most recent) NewSessionTickets that are retained; older tickets are evicted.
+    public static final int MAX_RETAINED_NEW_SESSION_TICKETS = 2;
+
     // https://www.rfc-editor.org/rfc/rfc8446.html#appendix-A.1
     enum Status {
         Start,
@@ -493,6 +496,10 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
         }
         NewSessionTicket ticket = new NewSessionTicket(state.computePSK(nst.getTicketNonce()), nst, selectedCipher);
         obtainedNewSessionTickets.add(ticket);
+        // Keep only the most recent tickets; evict the oldest ones.
+        while (obtainedNewSessionTickets.size() > MAX_RETAINED_NEW_SESSION_TICKETS) {
+            obtainedNewSessionTickets.remove(0);
+        }
         statusHandler.newSessionTicketReceived(ticket);
     }
 
