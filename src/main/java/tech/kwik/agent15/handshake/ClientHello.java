@@ -33,7 +33,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 import java.util.stream.Collectors;
 
 import static tech.kwik.agent15.TlsConstants.NamedGroup.secp256r1;
@@ -56,7 +55,6 @@ public class ClientHello extends HandshakeMessage {
     private static final int MINIMAL_MESSAGE_LENGTH = 1 + 3 + 2 + 32 + 1 + 2 + 2 + 2 + 2;
     private static final List<TlsConstants.SignatureScheme> SUPPORTED_SIGNATURES = List.of(TlsConstants.SignatureScheme.rsa_pss_rsae_sha256);
 
-    private static Random random = new Random();
     private static SecureRandom secureRandom = new SecureRandom();
     private final byte[] data;
     private final int pskExtensionStartPosition;
@@ -200,7 +198,7 @@ public class ClientHello extends HandshakeMessage {
 
         if (compatibilityMode) {
             sessionId = new byte[32];
-            random.nextBytes(sessionId);
+            secureRandom.nextBytes(sessionId);
         }
         else {
             sessionId = new byte[0];
