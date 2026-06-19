@@ -102,7 +102,7 @@ public class KeyShareExtension extends Extension {
         }
 
         if (handshakeType == TlsConstants.HandshakeType.client_hello) {
-            int keyShareEntriesSize = buffer.getShort();
+            int keyShareEntriesSize = buffer.getShort()& 0xffff;
             if (extensionDataLength != 2 + keyShareEntriesSize) {
                 throw new DecodeErrorException("inconsistent length");
             }
