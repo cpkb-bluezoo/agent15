@@ -172,6 +172,23 @@ class ServerHelloTest {
     }
 
     @Test
+    void parseServerHelloFromBufferWithNonZeroStartPosition() throws Exception {
+        byte[] serverHelloData = ByteUtils.hexToBytes("02000077030327303877f58601e5e987b1be085f509adecd10056353daf3843f5f89084a4c6100130100004f002b0002030400330045001700410456517b9551d5ce0950c8210bf1f30b3f5d2b066ac6ac7469d6490387b36d9a57385bdfe2d5d55a1e6956a6d8d771cd7f1aee418b1cf615cbd976ba509a48e9de");
+
+        // Place the ServerHello message in a buffer that is preceded by some other bytes, so its start position is not 0.
+        byte[] prefix = new byte[] { 0x16, 0x03, 0x03, 0x00, 0x7b };
+        ByteBuffer buffer = ByteBuffer.allocate(prefix.length + serverHelloData.length);
+        buffer.put(prefix);
+        buffer.put(serverHelloData);
+        buffer.position(prefix.length);  // position the buffer at the start of the ServerHello message
+
+        ServerHello sh = new ServerHello().parse(buffer, serverHelloData.length);
+
+        // The raw bytes captured during parsing should be exactly the ServerHello message.
+        assertThat(sh.getBytes()).isEqualTo(serverHelloData);
+    }
+
+    @Test
     void serializeServerHelloWithExtension() throws Exception {
         ServerHello sh = new ServerHello(TlsConstants.CipherSuite.TLS_AES_128_GCM_SHA256, List.of(new SupportedVersionsExtension(TlsConstants.HandshakeType.server_hello)));
         byte[] serializedData = sh.getBytes();

@@ -95,6 +95,7 @@ public class ServerHello extends HandshakeMessage {
         if (buffer.remaining() < MINIMAL_MESSAGE_LENGTH) {
             throw new DecodeErrorException("Message too short");
         }
+        int startPosition = buffer.position();
         buffer.getInt();  // Skip message type and 3 bytes length
 
         // https://datatracker.ietf.org/doc/html/rfc8446#section-4.1.3
@@ -139,7 +140,7 @@ public class ServerHello extends HandshakeMessage {
 
         // Update state.
         raw = new byte[length];
-        buffer.rewind();
+        buffer.position(startPosition);
         buffer.get(raw);
 
         return this;
