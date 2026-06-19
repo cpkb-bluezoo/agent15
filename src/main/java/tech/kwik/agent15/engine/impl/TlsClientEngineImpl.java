@@ -310,7 +310,12 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
         if (preSharedKey.isPresent()) {
             // https://www.rfc-editor.org/rfc/rfc8446.html#section-4.2.11
             // "In order to accept PSK key establishment, the server sends a "pre_shared_key" extension indicating the selected identity."
-            state.setPskSelected(((ServerPreSharedKeyExtension) preSharedKey.get()).getSelectedIdentity());
+            int selectedIdentity = ((ServerPreSharedKeyExtension) preSharedKey.get()).getSelectedIdentity();
+            if (selectedIdentity != 0) {
+                // As this client provides only max one PSK identity, the server must select that identity (index 0)
+                throw new IllegalParameterAlert("Server selected PSK identity that is not within the range supplied by the client: " + selectedIdentity);
+            }
+            state.setPskSelected(selectedIdentity);
             Logger.debug("Server has accepted PSK key establishment");
             pskAccepted = true;
         }

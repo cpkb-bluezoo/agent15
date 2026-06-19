@@ -280,9 +280,6 @@ public class TlsState implements BinderCalculator {
     }
 
     public void setPskSelected(int selectedIdentity) throws IllegalParameterAlert {
-        if (selectedIdentity != 0) {
-            throw new IllegalParameterAlert("Server selected PSK identity that is not within the range supplied by the client: " + selectedIdentity);
-        }
         pskSelected = true;
     }
 
