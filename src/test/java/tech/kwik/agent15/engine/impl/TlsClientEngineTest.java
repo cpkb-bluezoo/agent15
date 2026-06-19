@@ -437,6 +437,28 @@ class TlsClientEngineTest {
     }
 
     @Test
+    void serverHelloThatAcceptsPskWithoutKeyShareMustBeRejectedWhenClientOfferedDheOnly() throws Exception {
+        // https://www.rfc-editor.org/rfc/rfc8446#section-4.2.9
+        // "psk_dhe_ke: PSK with (EC)DHE key establishment. In this mode, the client and server MUST supply "key_share"
+        //  values (...)."
+        // The client only ever offers psk_dhe_ke (PSKwithDHE), so if the server accepts the PSK but omits the key_share
+        // extension, it is silently downgrading to non-forward-secret pure PSK (psk_ke). The client MUST refuse this.
+
+        // Given: client offered a PSK (and, implicitly, only the psk_dhe_ke mode)
+        startHandshakeWithPsk();
+        // ServerHello accepts the PSK but contains no key_share extension.
+        ServerHello serverHello = new ServerHello(TLS_AES_128_GCM_SHA256, List.of(
+                mandatorySupportedVersionExtension,
+                new ServerPreSharedKeyExtension(0)));
+
+        assertThatThrownBy(() ->
+                // When
+                engine.received(serverHello, ProtectionKeysType.None))
+                // Then
+                .isInstanceOf(ErrorAlert.class);
+    }
+
+    @Test
     void certificateRequestShouldNotContainDuplicateExtensions() throws Exception {
         // Given
         handshakeUpToCertificate();

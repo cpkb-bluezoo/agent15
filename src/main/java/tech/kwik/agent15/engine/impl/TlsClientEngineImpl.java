@@ -278,6 +278,12 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
         if (newSessionTicket == null && preSharedKey.isPresent()) {
             throw new UnsupportedExtensionAlert("unexpected pre_shared_key extension");
         }
+        if (newSessionTicket != null && preSharedKey.isPresent() && keyShareExtension.isEmpty()) {
+            // Because this client only supports PSK with DHE, the server must respond with a pre_shared_key extension when the client offered a PSK.
+            // https://tools.ietf.org/html/rfc8446#section-4.2.9
+            // "psk_dhe_ke:  PSK with (EC)DHE key establishment. In this mode, the client and server MUST supply "key_share" values (...)"
+            throw new MissingExtensionAlert("missing key_share extension");
+        }
 
         // https://tools.ietf.org/html/rfc8446#section-4.1.3
         // "ServerHello messages additionally contain either the "pre_shared_key" extension or the "key_share" extension,
