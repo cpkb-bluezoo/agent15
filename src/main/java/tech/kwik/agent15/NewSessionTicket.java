@@ -73,6 +73,7 @@ public class NewSessionTicket {
             cipher = TlsConstants.CipherSuite.TLS_AES_128_GCM_SHA256;
         }
         if (buffer.remaining() > 0) {
+            hasEarlyDataExtension = true;
             earlyDataMaxSize = buffer.getLong();
         }
     }
