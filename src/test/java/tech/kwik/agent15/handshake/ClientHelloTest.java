@@ -79,6 +79,25 @@ class ClientHelloTest {
     }
 
     @Test
+    void parseClientHelloFromBufferWithNonZeroStartPosition() throws Exception {
+        byte[] clientHelloData = ByteUtils.hexToBytes(("01 00002b 0303 2411ec38adb041713ca81a04182a655b567ecc8c4935e082ec20bb233d57aff2"
+                //    cipher    comp ext's length
+                + "00 0002 1301 0100 0000").replaceAll(" ", ""));
+
+        // Place the ClientHello message in a buffer that is preceded by some other bytes, so its start position is not 0.
+        byte[] prefix = new byte[] { 0x16, 0x03, 0x01, 0x00, 0x2f };
+        ByteBuffer buffer = ByteBuffer.allocate(prefix.length + clientHelloData.length);
+        buffer.put(prefix);
+        buffer.put(clientHelloData);
+        buffer.position(prefix.length);  // position the buffer at the start of the ClientHello message
+
+        ClientHello ch = new ClientHello(buffer, null);
+
+        // The raw bytes captured during parsing should be exactly the ClientHello message
+        assertThat(ch.getBytes()).isEqualTo(clientHelloData);
+    }
+
+    @Test
     void parseClientHelloWithInvalidLength() throws Exception {
         byte[] data = ByteUtils.hexToBytes(("01 00092b 0303 2411ec38adb041713ca81a04182a655b567ecc8c4935e082ec20bb233d57aff2"
                 //    cipher    comp ext's length
