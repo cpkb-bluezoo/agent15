@@ -35,8 +35,10 @@ import java.security.cert.X509Certificate;
 import java.security.interfaces.ECPublicKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.security.spec.ECGenParameterSpec;
 import java.security.spec.ECParameterSpec;
 import java.security.spec.InvalidKeySpecException;
+import java.security.spec.InvalidParameterSpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,6 +50,15 @@ import java.util.stream.Collectors;
 import static tech.kwik.agent15.TlsConstants.SignatureScheme.*;
 
 public class TlsServerEngineFactory {
+
+    /**
+     * https://www.rfc-editor.org/rfc/rfc8446.html#section-4.2.3
+     * "/* ECDSA algorithms  * /
+     *    ecdsa_secp256r1_sha256(0x0403),
+     *    ecdsa_secp384r1_sha384(0x0503),
+     *    ecdsa_secp521r1_sha512(0x0603),"
+     */
+    private static final List<String> SUPPORTED_EC_CURVES = List.of("secp256r1", "secp384r1", "secp521r1");
 
     private final List<X509Certificate> certificateChain;
     private final PrivateKey certificateKey;
@@ -86,7 +97,10 @@ public class TlsServerEngineFactory {
      * @param keyPassword   the password for the private key
      * @param ecCurve       the curve name for ECDSA certificates (in case it cannot be derived from the certificate), or null for RSA certificates
      * @throws CertificateException  when the certificate signature algorithm is not supported or cannot (completely) be determined.
+     * @deprecated The EC curve is now determined automatically from the certificate in a provider independent way, so
+     * the {@code ecCurve} argument is no longer needed. Use {@link #TlsServerEngineFactory(KeyStore, String, char[])} instead.
      */
+    @Deprecated
     public TlsServerEngineFactory(KeyStore keyStore, String alias, char[] keyPassword, String ecCurve) throws CertificateException {
         this(getCertificates(keyStore, alias), getPrivateKey(keyStore, alias, keyPassword), ecCurve);
     }
@@ -197,17 +211,37 @@ public class TlsServerEngineFactory {
         return new ArrayList(preferred);
     }
 
+    /**
+     * Determines the standard name of the curve used by the given certificate's EC public key.
+     *
+     * Java does not expose the curve name of an EC public key directly, so instead of parsing the (provider specific)
+     * string representation of the parameters, the key's actual curve parameters are compared against those of the
+     * known/supported named curves. These named curve parameters are obtained via the standard AlgorithmParameters API,
+     * which makes this approach provider independent.
+     *
+     * @return the matching curve name, or null if the key does not use any of the supported curves.
+     */
     private static String determineCurveName(Certificate certificate) {
-        ECPublicKey ecPublicKey = (ECPublicKey) certificate.getPublicKey();
-        ECParameterSpec params = ecPublicKey.getParams();
-        // Unfortunately, Java does not provide a proper way to get the curve name from the public key.
-        // Standard JDK (with standard security providers) emits string representation like
-        // "secp256r1 [NIST P-256,X9.62 prime256v1] (1.2.840.10045.3.1.7)", so:
-        String paramsContents = params.toString();
-        if (paramsContents.contains(" ")) {
-            return paramsContents.substring(0, paramsContents.indexOf(" "));
-        } else {
-            return null;
+        ECParameterSpec keyParams = ((ECPublicKey) certificate.getPublicKey()).getParams();
+        return SUPPORTED_EC_CURVES.stream()
+                .filter(curveName -> matchesNamedCurve(keyParams, curveName))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private static boolean matchesNamedCurve(ECParameterSpec keyParams, String curveName) {
+        try {
+            AlgorithmParameters algorithmParameters = AlgorithmParameters.getInstance("EC");
+            algorithmParameters.init(new ECGenParameterSpec(curveName));
+            ECParameterSpec namedCurve = algorithmParameters.getParameterSpec(ECParameterSpec.class);
+            // EllipticCurve and ECPoint implement equals(), so the curve parameters can be compared exactly.
+            return keyParams.getCurve().equals(namedCurve.getCurve())
+                    && keyParams.getGenerator().equals(namedCurve.getGenerator())
+                    && keyParams.getOrder().equals(namedCurve.getOrder())
+                    && keyParams.getCofactor() == namedCurve.getCofactor();
+        }
+        catch (NoSuchAlgorithmException | InvalidParameterSpecException e) {
+            return false;
         }
     }
 

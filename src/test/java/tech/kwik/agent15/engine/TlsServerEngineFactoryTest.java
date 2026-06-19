@@ -25,7 +25,6 @@ import tech.kwik.agent15.util.CertificateUtils;
 
 import java.security.KeyStore;
 import java.security.Security;
-import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.List;
 
@@ -187,7 +186,7 @@ class TlsServerEngineFactoryTest {
     }
 
     @Test
-    void signatureAlgorithmCannotBeDeterminedAutomaticallyWithEcCertificateWithBouncyCastle() throws Exception {
+    void signatureAlgorithmCanBeDeterminedAutomaticallyWithEcCertificateWithBouncyCastle() throws Exception {
         try {
             // Given
             Security.addProvider(new BouncyCastleProvider());
@@ -196,10 +195,31 @@ class TlsServerEngineFactoryTest {
             X509Certificate certificate = (X509Certificate) keyStore.getCertificate("example");
 
             // When
-            assertThatThrownBy(() ->
-                    TlsServerEngineFactory.preferredSignatureSchemes(certificate, null)
-            ).isInstanceOf(CertificateException.class);
+            // The curve is determined by comparing the key's curve parameters against the known named curves, which is
+            // provider independent, so it also works with BouncyCastle (without an explicit curve name being provided).
+            List<SignatureScheme> signatureScheme = TlsServerEngineFactory.preferredSignatureSchemes(certificate, null);
 
+            // Then
+            // The certificate in ec-rsa-signed.p12 uses a P-384 key.
+            assertThat(signatureScheme).containsExactly(ecdsa_secp384r1_sha384);
+        }
+        finally {
+            Security.removeProvider("BC");
+        }
+    }
+
+    @Test
+    void explicitlyProvidedCurveNameTakesPrecedence() throws Exception {
+        try {
+            // Given
+            Security.addProvider(new BouncyCastleProvider());
+            KeyStore keyStore = KeyStore.getInstance("PKCS12", "BC");
+            keyStore.load(getClass().getResourceAsStream("ec-rsa-signed.p12"), "secret".toCharArray());
+            X509Certificate certificate = (X509Certificate) keyStore.getCertificate("example");
+
+            // When
+            // The certificate actually uses a P-384 key (auto-detection would yield ecdsa_secp384r1_sha384), but the
+            // explicitly provided curve name takes precedence.
             List<SignatureScheme> signatureScheme = TlsServerEngineFactory.preferredSignatureSchemes(certificate, "secp256r1");
 
             // Then
