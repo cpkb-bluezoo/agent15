@@ -1,11 +1,11 @@
 package tech.kwik.agent15.extension;
 
+import org.junit.jupiter.api.Test;
 import tech.kwik.agent15.NewSessionTicket;
 import tech.kwik.agent15.TlsConstants;
 import tech.kwik.agent15.alert.DecodeErrorException;
 import tech.kwik.agent15.handshake.NewSessionTicketMessage;
 import tech.kwik.agent15.util.ByteUtils;
-import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
 
@@ -43,7 +43,7 @@ class ClientHelloPreSharedKeyExtensionTest {
         String rawBytes = "0029 003b 0016 0010 000102030405060708090a0b0c0d0e0f ffffffff 0021 20 000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f";
         var parsedExtension = new ClientHelloPreSharedKeyExtension().parse(ByteBuffer.wrap(ByteUtils.hexToBytes(rawBytes)));
         assertThat(parsedExtension.getIdentities()).hasSize(1);
-        assertThat(parsedExtension.getIdentities().get(0).getObfuscatedTicketAge()).isEqualTo(0xffffffff);
+        assertThat(parsedExtension.getIdentities().get(0).getObfuscatedTicketAge()).isEqualTo(0xffffffffL);
         assertThat(parsedExtension.getBinders()).hasSize(1);
     }
 

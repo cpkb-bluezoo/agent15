@@ -78,7 +78,7 @@ public class ClientHelloPreSharedKeyExtension extends PreSharedKeyExtension {
             if (remaining < 4) {
                 throw new DecodeErrorException("Incomplete psk identity");
             }
-            int obfuscatedTicketAge = buffer.getInt();
+            long obfuscatedTicketAge = buffer.getInt() & 0xffffffffL;
             remaining -= 4;
             identities.add(new PskIdentity(identity, obfuscatedTicketAge));
             remainingIdentitiesLength -= (2 + identityLength + 4);
