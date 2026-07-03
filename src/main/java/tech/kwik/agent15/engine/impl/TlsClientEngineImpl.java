@@ -151,6 +151,14 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
             unsupportedSignatures.removeAll(AVAILABLE_SIGNATURES);
             throw new IllegalArgumentException("Unsupported signature scheme(s): " + unsupportedSignatures);
         }
+        if (newSessionTicket != null && isExpired(newSessionTicket)) {
+            // https://www.rfc-editor.org/rfc/rfc8446#section-4.6.1
+            // "Clients MUST NOT cache tickets for longer than 7 days, regardless of the ticket_lifetime, and MAY
+            //  delete tickets earlier based on local policy."
+            // As ticket_lifetime is capped at 7 days when the NewSessionTicket message is parsed, discarding any
+            // ticket whose lifetime has passed implements this requirement. Silently fall back to a full handshake.
+            newSessionTicket = null;
+        }
         if (newSessionTicket != null && !supportedCiphers.contains(newSessionTicket.getCipher())) {
             throw new IllegalStateException("For session resumption, support ciphers should contain the cipher used with the session-to-resume (" + newSessionTicket.getCipher().toString() + ")");
         }
@@ -501,6 +509,11 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
         if (protectedBy != ProtectionKeysType.Application) {
             throw new UnexpectedMessageAlert("incorrect protection level");
         }
+        if (nst.getTicketLifetime() == 0) {
+            // https://www.rfc-editor.org/rfc/rfc8446#section-4.6.1
+            // "The value of zero indicates that the ticket should be discarded immediately."
+            return;
+        }
         NewSessionTicket ticket = new NewSessionTicket(state.computePSK(nst.getTicketNonce()), nst, selectedCipher);
         obtainedNewSessionTickets.add(ticket);
         // Keep only the most recent tickets; evict the oldest ones.
@@ -679,6 +692,10 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
             sender.send(certificateVerify);
             transcriptHash.recordClient(certificateVerify);
         }
+    }
+
+    private static boolean isExpired(NewSessionTicket ticket) {
+        return ticket.getTicketCreationDate().getTime() + ticket.getTicketLifeTime() * 1000L <= System.currentTimeMillis();
     }
 
     private Optional<String> extractReason(CertificateException exception) {

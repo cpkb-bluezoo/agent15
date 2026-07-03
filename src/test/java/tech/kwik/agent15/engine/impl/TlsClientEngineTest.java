@@ -825,6 +825,53 @@ class TlsClientEngineTest {
     }
 
     @Test
+    void newSessionTicketWithZeroLifetimeShouldBeDiscarded() throws Exception {
+        // https://www.rfc-editor.org/rfc/rfc8446#section-4.6.1
+        // "ticket_lifetime: (...) The value of zero indicates that the ticket should be discarded immediately."
+
+        // Given: a completed handshake, so resumption secrets are available and NewSessionTicketMessages can be processed.
+        handshakeUpToFinished();
+        TlsClientEngineImpl completedEngine = Mockito.spy(engine);
+        Mockito.doReturn(new byte[32]).when(completedEngine).computeFinishedVerifyData(ArgumentMatchers.any(), ArgumentMatchers.any());
+        completedEngine.received(new FinishedMessage(new byte[32]), ProtectionKeysType.Handshake);
+
+        // When: the server sends a NewSessionTicketMessage with a zero ticket lifetime
+        int ticketLifetime = 0;
+        long ticketAgeAdd = 0x01010101L;
+        byte[] ticketNonce = { 1 };
+        byte[] ticket = { 0x0a };
+        NewSessionTicketMessage zeroLifetimeTicket = new NewSessionTicketMessage(ticketLifetime, ticketAgeAdd, ticketNonce, ticket);
+        completedEngine.received(zeroLifetimeTicket, ProtectionKeysType.Application);
+
+        // Then: the ticket is not retained
+        assertThat(completedEngine.getNewSessionTickets()).isEmpty();
+    }
+
+    @Test
+    void startHandshakeWithExpiredTicketShouldFallBackToFullHandshake() throws Exception {
+        // https://www.rfc-editor.org/rfc/rfc8446#section-4.6.1
+        // "Clients MUST NOT cache tickets for longer than 7 days, regardless of the ticket_lifetime, and MAY delete
+        //  tickets earlier based on local policy."
+        // As ticket_lifetime is capped at 7 days (604800 seconds, enforced when parsing NewSessionTicket messages),
+        // not offering any ticket whose lifetime has passed implements this requirement.
+
+        // Given: a ticket that was created two hours ago with a lifetime of one hour, so it has expired.
+        NewSessionTicket expiredTicket = createNewSessionTicket();
+        when(expiredTicket.getTicketCreationDate()).thenReturn(new Date(System.currentTimeMillis() - 7200_000));
+        when(expiredTicket.getTicketLifeTime()).thenReturn(3600);
+        engine.setNewSessionTicket(expiredTicket);
+
+        // When
+        engine.startHandshake();
+
+        // Then: the expired ticket is not offered (no pre_shared_key extension), i.e. a full handshake is performed.
+        ArgumentCaptor<ClientHello> messageCaptor = ArgumentCaptor.forClass(ClientHello.class);
+        verify(messageSender).send(messageCaptor.capture());
+        assertThat(messageCaptor.getValue().getExtensions())
+                .noneMatch(extension -> extension instanceof ClientHelloPreSharedKeyExtension);
+    }
+
+    @Test
     void certificateRequestMessageShouldNotBeReceivedBeforeEncryptedExtensions() throws Exception {
         // Given
         engine.startHandshake();
@@ -953,6 +1000,7 @@ class TlsClientEngineTest {
         NewSessionTicket newSessionTicket = mock(NewSessionTicket.class);
         when(newSessionTicket.getCipher()).thenReturn(TLS_AES_128_GCM_SHA256);
         when(newSessionTicket.getTicketCreationDate()).thenReturn(new Date());
+        when(newSessionTicket.getTicketLifeTime()).thenReturn(3600);
         when(newSessionTicket.getSessionTicketIdentity()).thenReturn(new byte[32]);
         return newSessionTicket;
     }
