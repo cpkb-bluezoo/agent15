@@ -318,6 +318,13 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
                 // As this client provides only max one PSK identity, the server must select that identity (index 0)
                 throw new IllegalParameterAlert("Server selected PSK identity that is not within the range supplied by the client: " + selectedIdentity);
             }
+            // https://www.rfc-editor.org/rfc/rfc8446.html#section-4.2.11
+            // "Clients MUST verify that (...) the server selected a cipher suite indicating a Hash associated with the
+            //  PSK (...). If these values are not consistent, the client MUST abort the handshake with an
+            //  "illegal_parameter" alert."
+            if (hashLength(selectedCipher) != hashLength(newSessionTicket.getCipher())) {
+                throw new IllegalParameterAlert("server selected cipher suite with a hash that does not match the PSK hash");
+            }
             state.setPskSelected(selectedIdentity);
             Logger.debug("Server has accepted PSK key establishment");
             pskAccepted = true;

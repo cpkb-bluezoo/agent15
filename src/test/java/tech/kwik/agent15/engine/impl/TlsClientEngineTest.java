@@ -459,6 +459,46 @@ class TlsClientEngineTest {
     }
 
     @Test
+    void serverHelloThatAcceptsPskMustSelectCipherWithSameHashAsPsk() throws Exception {
+        // https://www.rfc-editor.org/rfc/rfc8446#section-4.2.11
+        // "Clients MUST verify that the server's selected_identity is within the range supplied by the client, that
+        //  the server selected a cipher suite indicating a Hash associated with the PSK (...). If these values are
+        //  not consistent, the client MUST abort the handshake with an "illegal_parameter" alert."
+
+        // Given: client offered a PSK established with TLS_AES_128_GCM_SHA256 (SHA-256), while also supporting a SHA-384 cipher
+        engine.addSupportedCiphers(List.of(TLS_AES_256_GCM_SHA384));
+        startHandshakeWithPsk();
+        // ServerHello accepts the PSK, but selects a cipher whose hash (SHA-384) differs from the PSK's hash (SHA-256).
+        ServerHello serverHello = createDefaultServerHello(TLS_AES_256_GCM_SHA384, List.of(new ServerPreSharedKeyExtension(0)));
+
+        assertThatThrownBy(() ->
+                // When
+                engine.received(serverHello, ProtectionKeysType.None))
+                // Then
+                .isInstanceOf(IllegalParameterAlert.class);
+    }
+
+    @Test
+    void serverHelloThatAcceptsPskMaySelectDifferentCipherWithSameHash() throws Exception {
+        // https://www.rfc-editor.org/rfc/rfc8446#section-4.2.11
+        // "Each PSK is associated with a single Hash algorithm."
+        // The consistency requirement is on the hash, not on the exact cipher suite: a server may accept a PSK
+        // established with TLS_AES_128_GCM_SHA256 while selecting TLS_CHACHA20_POLY1305_SHA256 (both SHA-256).
+
+        // Given: client offered a PSK established with TLS_AES_128_GCM_SHA256, while also supporting another SHA-256 cipher
+        engine.addSupportedCiphers(List.of(TLS_CHACHA20_POLY1305_SHA256));
+        startHandshakeWithPsk();
+        // ServerHello accepts the PSK and selects the other cipher with the same (SHA-256) hash.
+        ServerHello serverHello = createDefaultServerHello(TLS_CHACHA20_POLY1305_SHA256, List.of(new ServerPreSharedKeyExtension(0)));
+
+        assertThatCode(() ->
+                // When
+                engine.received(serverHello, ProtectionKeysType.None))
+                // Then
+                .doesNotThrowAnyException();
+    }
+
+    @Test
     void certificateRequestShouldNotContainDuplicateExtensions() throws Exception {
         // Given
         handshakeUpToCertificate();
