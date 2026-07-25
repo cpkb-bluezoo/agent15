@@ -1,0 +1,11 @@
+module:tech.kwik.agent15
+tech.kwik.agent15
+tech.kwik.agent15.alert
+tech.kwik.agent15.compat
+tech.kwik.agent15.engine
+tech.kwik.agent15.engine.impl
+tech.kwik.agent15.env
+tech.kwik.agent15.extension
+tech.kwik.agent15.handshake
+tech.kwik.agent15.log
+tech.kwik.agent15.util
