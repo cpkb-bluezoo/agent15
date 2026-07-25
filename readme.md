@@ -2,7 +2,7 @@
 
 # A (partial) TLS 1.3 implementation in Java
 
-[![Maven Central](https://img.shields.io/maven-central/v/tech.kwik/agent15.svg?label=Maven%20Central)](https://mvnrepository.com/artifact/tech.kwik/agent15)
+[![Maven Central](https://img.shields.io/maven-central/v/tech.kwik/agent15.svg?label=Maven%20Central)](https://central.sonatype.com/artifact/tech.kwik/agent15)
 [![Javadoc](https://img.shields.io/badge/Javadoc-online-blue.svg)](https://ptrd.github.io/agent15/javadoc)
 
 Agent15 is an open source implementation of the [handshake protocol](https://datatracker.ietf.org/doc/html/rfc8446#section-4) of TLS 1.3. 
