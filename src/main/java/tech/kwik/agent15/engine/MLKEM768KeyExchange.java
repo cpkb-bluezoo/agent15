@@ -29,6 +29,15 @@ public class MLKEM768KeyExchange extends MLKEMKeyExchange {
     public static final int ENCAPSULATION_KEY_LENGTH = 1184;
     public static final int CIPHERTEXT_LENGTH = 1088;
 
+    // TODO: this runs an extra throwaway keygen the first time this class is
+    // touched (measured ~260us warmed, more like ~400-500us cold), charged to
+    // whichever handshake happens to trigger class loading -- and other
+    // handshakes on different SelectorLoop threads arriving concurrently
+    // block on the same class-init lock, not just that one. Once
+    // KeyExchangeFactory.init() has a real implementation, it should
+    // reference this class (or MLKEM768KeyExchange/MLKEM1024KeyExchange
+    // explicitly) so this runs during the explicit warm-up window instead of
+    // on a live handshake.
     private static final byte[] PUBLIC_KEY_DER_PREFIX = computePublicKeyDerPrefix(ALGORITHM, ENCAPSULATION_KEY_LENGTH);
 
     public MLKEM768KeyExchange() {

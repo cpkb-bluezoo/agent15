@@ -28,6 +28,9 @@ public class MLKEM1024KeyExchange extends MLKEMKeyExchange {
     public static final int ENCAPSULATION_KEY_LENGTH = 1568;
     public static final int CIPHERTEXT_LENGTH = 1568;
 
+    // TODO: see MLKEM768KeyExchange's PUBLIC_KEY_DER_PREFIX for why this
+    // needs to be touched by KeyExchangeFactory.init() once that has a real
+    // implementation.
     private static final byte[] PUBLIC_KEY_DER_PREFIX = computePublicKeyDerPrefix(ALGORITHM, ENCAPSULATION_KEY_LENGTH);
 
     public MLKEM1024KeyExchange() {
