@@ -19,19 +19,18 @@
 package tech.kwik.agent15.engine;
 
 /**
- * ML-KEM-768, the pqc component of the X25519MLKEM768 and
- * SecP256r1MLKEM768 hybrid groups (RFC 10024). See MLKEMKeyExchange for
- * the implementation.
+ * ML-KEM-1024, the pqc component of the SecP384r1MLKEM1024 hybrid group
+ * (RFC 10024). See MLKEMKeyExchange for the implementation.
  */
-public class MLKEM768KeyExchange extends MLKEMKeyExchange {
+public class MLKEM1024KeyExchange extends MLKEMKeyExchange {
 
-    public static final String ALGORITHM = "ML-KEM-768";
-    public static final int ENCAPSULATION_KEY_LENGTH = 1184;
-    public static final int CIPHERTEXT_LENGTH = 1088;
+    public static final String ALGORITHM = "ML-KEM-1024";
+    public static final int ENCAPSULATION_KEY_LENGTH = 1568;
+    public static final int CIPHERTEXT_LENGTH = 1568;
 
     private static final byte[] PUBLIC_KEY_DER_PREFIX = computePublicKeyDerPrefix(ALGORITHM, ENCAPSULATION_KEY_LENGTH);
 
-    public MLKEM768KeyExchange() {
+    public MLKEM1024KeyExchange() {
         super(ALGORITHM, ENCAPSULATION_KEY_LENGTH, CIPHERTEXT_LENGTH, PUBLIC_KEY_DER_PREFIX);
     }
 }

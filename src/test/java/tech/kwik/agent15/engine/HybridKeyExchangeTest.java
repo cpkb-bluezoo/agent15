@@ -35,6 +35,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * structurally for a symmetric DH exchange -- both sides derive the same
  * secret from their own and the peer's share -- which is exactly the
  * property this test needs to catch a splitting or ordering bug.
+ *
+ * TODO once the real X25519/ECDH KeyExchange implementations land, add
+ * an equivalent round-trip test per concrete hybrid group
+ * (X25519MLKEM768KeyExchangeTest etc.) using them instead of
+ * FakeClassicalKeyExchange -- this class's generic-logic coverage stays
+ * useful alongside those, it doesn't get replaced by them.
  */
 class HybridKeyExchangeTest {
 
