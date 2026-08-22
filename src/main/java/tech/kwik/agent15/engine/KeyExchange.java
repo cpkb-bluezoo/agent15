@@ -18,7 +18,6 @@
  */
 package tech.kwik.agent15.engine;
 
-import tech.kwik.agent15.alert.DecodeErrorException;
 import tech.kwik.agent15.alert.IllegalParameterAlert;
 
 public interface KeyExchange {
@@ -27,9 +26,9 @@ public interface KeyExchange {
 
     byte[] getClientKeyShare();
 
-    byte[] clientComputeSharedSecret(byte[] serverKeyShare) throws IllegalParameterAlert, DecodeErrorException;
+    byte[] clientComputeSharedSecret(byte[] serverKeyShare) throws IllegalParameterAlert;
 
-    byte[] serverProcessClientKeyShare(byte[] clientKeyShare) throws IllegalParameterAlert, DecodeErrorException;  // returns shared secret
+    byte[] serverProcessClientKeyShare(byte[] clientKeyShare) throws IllegalParameterAlert;  // returns shared secret
 
     byte[] getServerKeyShare();  // valid only after serverProcessClientKeyShare(), maybe should have a checked exception
 

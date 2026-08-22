@@ -21,7 +21,7 @@ package tech.kwik.agent15.engine.impl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tech.kwik.agent15.TlsConstants;
-import tech.kwik.agent15.alert.DecodeErrorException;
+import tech.kwik.agent15.alert.IllegalParameterAlert;
 import tech.kwik.agent15.util.ByteUtils;
 
 import java.math.BigInteger;
@@ -98,13 +98,13 @@ class ECKeyExchangeTest {
         byte[] data = Arrays.copyOf(ByteUtils.hexToBytes(CLIENT_KEY_EXCHANGE_DATA), 64);
 
         assertThatThrownBy(() -> ecKeyExchange.parseKeyShare(data))
-                .isInstanceOf(DecodeErrorException.class);
+                .isInstanceOf(IllegalParameterAlert.class);
     }
 
     @Test
     void parseEmptyKeyShareThrows() {
         assertThatThrownBy(() -> ecKeyExchange.parseKeyShare(new byte[0]))
-                .isInstanceOf(DecodeErrorException.class);
+                .isInstanceOf(IllegalParameterAlert.class);
     }
 
     @Test
@@ -112,7 +112,7 @@ class ECKeyExchangeTest {
         byte[] data = Arrays.copyOf(ByteUtils.hexToBytes(CLIENT_KEY_EXCHANGE_DATA), 66);
 
         assertThatThrownBy(() -> ecKeyExchange.parseKeyShare(data))
-                .isInstanceOf(DecodeErrorException.class);
+                .isInstanceOf(IllegalParameterAlert.class);
     }
 
     @Test

@@ -19,7 +19,6 @@
 package tech.kwik.agent15.engine.impl;
 
 import tech.kwik.agent15.TlsConstants;
-import tech.kwik.agent15.alert.DecodeErrorException;
 import tech.kwik.agent15.alert.IllegalParameterAlert;
 import tech.kwik.agent15.engine.KeyExchange;
 import tech.kwik.agent15.util.ByteUtils;
@@ -89,7 +88,7 @@ public class ECKeyExchange implements KeyExchange {
     }
 
     @Override
-    public byte[] clientComputeSharedSecret(byte[] serverKeyShare) throws DecodeErrorException, IllegalParameterAlert {
+    public byte[] clientComputeSharedSecret(byte[] serverKeyShare) throws IllegalParameterAlert {
         ECPublicKey serverPublicKey = parseKeyShare(serverKeyShare);
         return computeSharedSecret(serverPublicKey);
     }
@@ -111,11 +110,11 @@ public class ECKeyExchange implements KeyExchange {
         }
     }
 
-    ECPublicKey parseKeyShare(byte[] keyExchangeData) throws DecodeErrorException {
+    ECPublicKey parseKeyShare(byte[] keyExchangeData) throws IllegalParameterAlert {
         if (namedGroup == secp256r1) {
             int keyLength = CURVE_KEY_LENGTHS.get(namedGroup);
             if (keyExchangeData.length != keyLength) {
-                throw new DecodeErrorException("Invalid " + namedGroup.name() + " key length: " + keyExchangeData.length);
+                throw new IllegalParameterAlert("Invalid " + namedGroup.name() + " key length: " + keyExchangeData.length);
             }
             ByteBuffer buffer = ByteBuffer.wrap(keyExchangeData);
             int headerByte = buffer.get();
@@ -132,7 +131,7 @@ public class ECKeyExchange implements KeyExchange {
                 return rawToEncodedECPublicKey(namedGroup, keyData);
             }
             else {
-                throw new DecodeErrorException("EC keys must be in legacy form");
+                throw new IllegalParameterAlert("EC keys must be in legacy form");
             }
         }
         else {
@@ -141,7 +140,7 @@ public class ECKeyExchange implements KeyExchange {
     }
 
     @Override
-    public byte[] serverProcessClientKeyShare(byte[] keyExchangeData) throws DecodeErrorException, IllegalParameterAlert {
+    public byte[] serverProcessClientKeyShare(byte[] keyExchangeData) throws IllegalParameterAlert {
         if (privateKey == null) {
             generateKeyPair();
         }
