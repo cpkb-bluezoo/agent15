@@ -239,8 +239,6 @@ public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngin
         if (keyExchange == null) {
             throw new IllegalArgumentException("Named group " + keyShareEntry.getNamedGroup() + " not supported");
         }
-        keyExchange.serverProcessClientKeyShare(keyShareEntry.getKeyExchangeData());
-
         state.computeEarlyTrafficSecret();
         statusHandler.earlySecretsKnown();
 

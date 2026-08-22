@@ -155,7 +155,6 @@ public class ECKeyExchange implements KeyExchange {
 
     @Override
     public byte[] getServerKeyShare() {
-        System.out.println("#* getServerKeyShare for " + namedGroup);
         return serialize(publicKey);
     }
 

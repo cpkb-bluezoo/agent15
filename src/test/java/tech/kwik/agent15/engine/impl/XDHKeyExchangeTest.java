@@ -87,14 +87,41 @@ class XDHKeyExchangeTest {
     }
 
     @Test
-    void parseKeyShareReversesTheGivenArray() throws Exception {
+    void parseKeyShareDoesNotModifyTheGivenArray() throws Exception {
         byte[] data = ByteUtils.hexToBytes(X25519_KEY_EXCHANGE_DATA);
 
         // When
         xdhKeyExchange.parseKeyShare(data);
 
-        // Then: note that the given array is reversed in place.
-        assertThat(data).isEqualTo(ByteUtils.hexToBytes("6a4e9baa8ea9a4ebf41a38260d3abf0d5af73eb4dc7d8b7454a7308909f02085"));
+        // Then
+        assertThat(data).isEqualTo(ByteUtils.hexToBytes(X25519_KEY_EXCHANGE_DATA));
+    }
+
+    @Test
+    void parsingSameKeyShareTwiceYieldsSameKey() throws Exception {
+        byte[] data = ByteUtils.hexToBytes(X25519_KEY_EXCHANGE_DATA);
+
+        // When
+        XECPublicKey firstKey = xdhKeyExchange.parseKeyShare(data);
+        XECPublicKey secondKey = xdhKeyExchange.parseKeyShare(data);
+
+        // Then
+        assertThat(secondKey.getU()).isEqualTo(firstKey.getU());
+    }
+
+    @Test
+    void clientAndServerComputeSameSharedSecret() throws Exception {
+        XDHKeyExchange client = new XDHKeyExchange(TlsConstants.NamedGroup.x25519);
+        XDHKeyExchange server = new XDHKeyExchange(TlsConstants.NamedGroup.x25519);
+        client.generateClientKeyPair();
+
+        // When
+        byte[] clientKeyShare = client.getClientKeyShare();
+        byte[] serverSharedSecret = server.serverProcessClientKeyShare(clientKeyShare);
+        byte[] clientSharedSecret = client.clientComputeSharedSecret(server.getServerKeyShare());
+
+        // Then
+        assertThat(clientSharedSecret).isEqualTo(serverSharedSecret);
     }
 
     @Test

@@ -152,9 +152,10 @@ public class XDHKeyExchange implements KeyExchange {
 
     static private XECPublicKey rawToEncodedXDHPublicKey(TlsConstants.NamedGroup curve, byte[] keyData) {
         try {
-            // Encoding is little endian, so reverse the bytes.
-            reverse(keyData);
-            BigInteger u = new BigInteger(1, keyData);
+            // Encoding is little endian, so reverse the bytes. Use a copy, to avoid modifying the caller's array.
+            byte[] reversed = Arrays.copyOf(keyData, keyData.length);
+            reverse(reversed);
+            BigInteger u = new BigInteger(1, reversed);
             KeyFactory kf = KeyFactory.getInstance("XDH");
             NamedParameterSpec paramSpec = new NamedParameterSpec(curve.name().toUpperCase());
             XECPublicKeySpec pubSpec = new XECPublicKeySpec(paramSpec, u);
