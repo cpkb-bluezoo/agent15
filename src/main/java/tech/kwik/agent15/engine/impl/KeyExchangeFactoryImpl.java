@@ -22,9 +22,7 @@ import tech.kwik.agent15.TlsConstants;
 import tech.kwik.agent15.engine.KeyExchange;
 import tech.kwik.agent15.engine.KeyExchangeFactory;
 
-import static tech.kwik.agent15.TlsConstants.NamedGroup.secp256r1;
-import static tech.kwik.agent15.TlsConstants.NamedGroup.x25519;
-import static tech.kwik.agent15.TlsConstants.NamedGroup.x448;
+import static tech.kwik.agent15.TlsConstants.NamedGroup.*;
 
 public class KeyExchangeFactoryImpl implements KeyExchangeFactory {
 
@@ -33,7 +31,7 @@ public class KeyExchangeFactoryImpl implements KeyExchangeFactory {
         if (group == x25519 || group == x448) {
             return new XDHKeyExchange(group);
         }
-        if (group == secp256r1) {
+        if (group == secp256r1 || group == secp384r1 || group == secp521r1) {
             return new ECKeyExchange(group);
         }
         return null;

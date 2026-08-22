@@ -111,31 +111,26 @@ public class ECKeyExchange implements KeyExchange {
     }
 
     ECPublicKey parseKeyShare(byte[] keyExchangeData) throws IllegalParameterAlert {
-        if (namedGroup == secp256r1) {
-            int keyLength = CURVE_KEY_LENGTHS.get(namedGroup);
-            if (keyExchangeData.length != keyLength) {
-                throw new IllegalParameterAlert("Invalid " + namedGroup.name() + " key length: " + keyExchangeData.length);
-            }
-            ByteBuffer buffer = ByteBuffer.wrap(keyExchangeData);
-            int headerByte = buffer.get();
-            // https://datatracker.ietf.org/doc/html/rfc8446#section-4.2.8.2
-            // "For secp256r1, secp384r1, and secp521r1, the contents are the serialized value of the following struct:
-            //      struct {
-            //          uint8 legacy_form = 4;
-            //          opaque X[coordinate_length];
-            //          opaque Y[coordinate_length];
-            //      } UncompressedPointRepresentation;"
-            if (headerByte == 4) {
-                byte[] keyData = new byte[keyLength - 1];
-                buffer.get(keyData);
-                return rawToEncodedECPublicKey(namedGroup, keyData);
-            }
-            else {
-                throw new IllegalParameterAlert("EC keys must be in legacy form");
-            }
+        int keyLength = CURVE_KEY_LENGTHS.get(namedGroup);
+        if (keyExchangeData.length != keyLength) {
+            throw new IllegalParameterAlert("Invalid " + namedGroup.name() + " key length: " + keyExchangeData.length);
+        }
+        ByteBuffer buffer = ByteBuffer.wrap(keyExchangeData);
+        int headerByte = buffer.get();
+        // https://datatracker.ietf.org/doc/html/rfc8446#section-4.2.8.2
+        // "For secp256r1, secp384r1, and secp521r1, the contents are the serialized value of the following struct:
+        //      struct {
+        //          uint8 legacy_form = 4;
+        //          opaque X[coordinate_length];
+        //          opaque Y[coordinate_length];
+        //      } UncompressedPointRepresentation;"
+        if (headerByte == 4) {
+            byte[] keyData = new byte[keyLength - 1];
+            buffer.get(keyData);
+            return rawToEncodedECPublicKey(namedGroup, keyData);
         }
         else {
-            throw new RuntimeException("unsupported group " + namedGroup);
+            throw new IllegalParameterAlert("EC keys must be in legacy form");
         }
     }
 
@@ -158,40 +153,42 @@ public class ECKeyExchange implements KeyExchange {
     }
 
     byte[] serialize(ECPublicKey key) {
-        if (namedGroup == secp256r1) {
-            ByteBuffer buffer = ByteBuffer.allocate(CURVE_KEY_LENGTHS.get(namedGroup));
+        ByteBuffer buffer = ByteBuffer.allocate(CURVE_KEY_LENGTHS.get(namedGroup));
 
-            // See https://tools.ietf.org/html/rfc8446#section-4.2.8.2, "For secp256r1, secp384r1, and secp521r1, ..."
-            buffer.put((byte) 4);
-            byte[] affineX = key.getW().getAffineX().toByteArray();
-            writeAffine(buffer, affineX);
-            byte[] affineY = key.getW().getAffineY().toByteArray();
-            writeAffine(buffer, affineY);
-            return buffer.array();
-        }
-        else {
-            throw new RuntimeException("unsupported group " + namedGroup);
-        }
+        // See https://tools.ietf.org/html/rfc8446#section-4.2.8.2, "For secp256r1, secp384r1, and secp521r1, ..."
+        buffer.put((byte) 4);
+        int coordinateLength = (CURVE_KEY_LENGTHS.get(namedGroup) - 1) / 2;
+        byte[] affineX = key.getW().getAffineX().toByteArray();
+        writeAffine(buffer, affineX, coordinateLength);
+        byte[] affineY = key.getW().getAffineY().toByteArray();
+        writeAffine(buffer, affineY, coordinateLength);
+        return buffer.array();
     }
 
-    private void writeAffine(ByteBuffer buffer, byte[] affine) {
-        if (affine.length == 32) {
+    /**
+     * Writes an affine coordinate (as returned by BigInteger.toByteArray(), i.e. two's complement) to the buffer, as an
+     * unsigned big endian value of exactly <code>coordinateLength</code> bytes.
+     */
+    private void writeAffine(ByteBuffer buffer, byte[] affine, int coordinateLength) {
+        if (affine.length == coordinateLength) {
             buffer.put(affine);
         }
-        else if (affine.length < 32) {
-            for (int i = 0; i < 32 - affine.length; i++) {
+        else if (affine.length < coordinateLength) {
+            for (int i = 0; i < coordinateLength - affine.length; i++) {
                 buffer.put((byte) 0);
             }
             buffer.put(affine, 0, affine.length);
         }
-        else if (affine.length > 32) {
-            for (int i = 0; i < affine.length - 32; i++) {
+        else {
+            // Larger than the coordinate length: only allowed when the additional leading bytes are zero (which is the
+            // case when the most significant bit of the coordinate is set).
+            for (int i = 0; i < affine.length - coordinateLength; i++) {
                 if (affine[i] != 0) {
-                    throw new RuntimeException("W Affine more then 32 bytes, leading bytes not 0 "
+                    throw new RuntimeException("W Affine more then " + coordinateLength + " bytes, leading bytes not 0 "
                             + ByteUtils.bytesToHex(affine));
                 }
             }
-            buffer.put(affine, affine.length - 32, 32);
+            buffer.put(affine, affine.length - coordinateLength, coordinateLength);
         }
     }
 
