@@ -944,10 +944,10 @@ class TlsClientEngineTest {
     void unsupportedNamedGroupLeadsToException() throws Exception {
         assertThatThrownBy(() ->
                 // When
-                engine.startHandshake(TlsConstants.NamedGroup.x448))
+                engine.startHandshake(TlsConstants.NamedGroup.secp521r1))
                 // Then
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("x448");
+                .hasMessageContaining("secp521r1");
     }
 
     @Test

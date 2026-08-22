@@ -53,7 +53,7 @@ public class XDHKeyExchange implements KeyExchange {
     private XECPublicKey publicKey;
 
     public XDHKeyExchange(TlsConstants.NamedGroup namedGroup) {
-        if (namedGroup == x25519) {
+        if (namedGroup == x25519 || namedGroup == x448) {
             this.namedGroup = namedGroup;
         }
         else {
@@ -133,6 +133,12 @@ public class XDHKeyExchange implements KeyExchange {
 
     byte[] serialize(XECPublicKey key) {
         byte[] raw = key.getU().toByteArray();
+        // The u-coordinate is an unsigned value, but BigInteger.toByteArray() adds a leading zero byte when the most
+        // significant bit is set (which happens for X448, as, contrary to X25519, its most significant bit is not
+        // masked); strip that byte.
+        if (raw.length == CURVE_KEY_LENGTHS.get(namedGroup) + 1 && raw[0] == 0) {
+            raw = Arrays.copyOfRange(raw, 1, raw.length);
+        }
         if (raw.length > CURVE_KEY_LENGTHS.get(namedGroup)) {
             throw new RuntimeException("Invalid " + namedGroup + " key length: " + raw.length);
         }
