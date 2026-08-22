@@ -25,7 +25,6 @@ import tech.kwik.agent15.alert.DecodeErrorException;
 import tech.kwik.agent15.util.ByteUtils;
 
 import java.nio.ByteBuffer;
-import java.security.interfaces.ECPublicKey;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,8 +41,7 @@ class KeyShareExtensionTest {
 
         assertThat(keyShareExtension.getKeyShareEntries()).hasSize(1);
         assertThat(keyShareExtension.getKeyShareEntries().get(0).getNamedGroup()).isEqualTo(TlsConstants.NamedGroup.secp256r1);
-        assertThat(keyShareExtension.getKeyShareEntries().get(0)).isInstanceOf(KeyShareExtension.ECKeyShareEntry.class);
-        assertThat(keyShareExtension.getKeyShareEntries().get(0).getKey()).isNotNull();
+        assertThat(keyShareExtension.getKeyShareEntries().get(0).getKeyExchangeData()).startsWith(0x04, 0x5d, 0x58, 0xe5, 0x2e, 0x3d, 0xee, 0xe2);
     }
 
     @Test
@@ -58,8 +56,7 @@ class KeyShareExtensionTest {
         assertThat(keyShareExtension.getKeyShareEntries()).hasSize(2);
         for (int i = 0; i < 2; i++) {
             assertThat(keyShareExtension.getKeyShareEntries().get(i).getNamedGroup()).isEqualTo(TlsConstants.NamedGroup.secp256r1);
-            assertThat(keyShareExtension.getKeyShareEntries().get(i)).isInstanceOf(KeyShareExtension.ECKeyShareEntry.class);
-            assertThat(keyShareExtension.getKeyShareEntries().get(i).getKey()).isNotNull();
+            assertThat(keyShareExtension.getKeyShareEntries().get(0).getKeyExchangeData()).startsWith(0x04, 0x5d, 0x58, 0xe5, 0x2e, 0x3d, 0xee, 0xe2);
         }
     }
 
@@ -95,8 +92,7 @@ class KeyShareExtensionTest {
 
         assertThat(keyShareExtension.getKeyShareEntries()).hasSize(1);
         assertThat(keyShareExtension.getKeyShareEntries().get(0).getNamedGroup()).isEqualTo(TlsConstants.NamedGroup.secp256r1);
-        assertThat(keyShareExtension.getKeyShareEntries().get(0)).isInstanceOf(KeyShareExtension.ECKeyShareEntry.class);
-        assertThat(keyShareExtension.getKeyShareEntries().get(0).getKey()).isNotNull();
+        assertThat(keyShareExtension.getKeyShareEntries().get(0).getKeyExchangeData()).startsWith(0x04, 0xac, 0xe3, 0xb0, 0x35, 0xeb, 0xa5, 0xdd);
     }
 
     @Test
@@ -108,7 +104,7 @@ class KeyShareExtensionTest {
 
         assertThat(keyShareExtension.getKeyShareEntries()).hasSize(1);
         assertThat(keyShareExtension.getKeyShareEntries().get(0).getNamedGroup()).isEqualTo(TlsConstants.NamedGroup.secp256r1);
-        assertThat(keyShareExtension.getKeyShareEntries().get(0).getKey()).isNull();
+        assertThat(keyShareExtension.getKeyShareEntries().get(0).getKeyExchangeData()).isNull();
     }
 
     @Test
@@ -191,7 +187,9 @@ class KeyShareExtensionTest {
     @Test
     void parsingUnsupportedNamedGroupShouldBeIgnored() throws TlsProtocolException {
         String rawData = "0033" + "008c" + "008a"
+                // ffdhe2048(0x0100)
                 + "01000041045d58e52e3deee2e8b78ec51e2d0cedb5080c8244bd3f651219cc48f3d3d404399d6748ab3eaaca0e32b927fc5e8107628e636b614cab332d8637c1d61caccdda"
+                // secp256r1(0x0017)
                 + "00170041045d58e52e3deee2e8b78ec51e2d0cedb5080c8244bd3f651219cc48f3d3d404399d6748ab3eaaca0e32b927fc5e8107628e636b614cab332d8637c1d61caccdda";
         ByteBuffer buffer = ByteBuffer.wrap(ByteUtils.hexToBytes(rawData));
 
@@ -227,28 +225,48 @@ class KeyShareExtensionTest {
 
     @Test
     void serializeClientKeyShare() throws Exception {
-        byte[] rawData = ByteUtils.hexToBytes("0033" + "0047" + "0045" + "0017" + "0041"
-                + "045d58e52e3deee2e8b78ec51e2d0cedb5080c8244bd3f651219cc48f3d3d404399d6748ab3eaaca0e32b927fc5e8107628e636b614cab332d8637c1d61caccdda");
-        ByteBuffer buffer = ByteBuffer.wrap(rawData);
-        KeyShareExtension parsedKeyShareExtension = new KeyShareExtension(buffer, TlsConstants.HandshakeType.client_hello);
+        byte[] rawKeyExchangeData = ByteUtils.hexToBytes(
+                "045d58e52e3deee2e8b78ec51e2d0cedb5080c8244bd3f651219cc48f3d3d404399d6748ab3eaaca0e32b927fc5e8107628e636b614cab332d8637c1d61caccdda");
 
-        KeyShareExtension keyShareExtension = new KeyShareExtension((ECPublicKey) parsedKeyShareExtension.getKeyShareEntries().get(0).getKey(), TlsConstants.NamedGroup.secp256r1, TlsConstants.HandshakeType.client_hello);
+        KeyShareExtension keyShareExtension = new KeyShareExtension(rawKeyExchangeData, TlsConstants.NamedGroup.secp256r1, TlsConstants.HandshakeType.client_hello);
         byte[] serialized = keyShareExtension.getBytes();
 
-        assertThat(serialized).isEqualTo(rawData);
+        assertThat(serialized).isEqualTo(ByteUtils.hexToBytes("0033" + "0047" + "0045" + "0017" + "0041"
+                + "045d58e52e3deee2e8b78ec51e2d0cedb5080c8244bd3f651219cc48f3d3d404399d6748ab3eaaca0e32b927fc5e8107628e636b614cab332d8637c1d61caccdda"));
     }
 
     @Test
     void serializeServerKeyShare() throws Exception {
-        byte[] rawData = ByteUtils.hexToBytes("0033" + "0045" + "0017" + "0041"
-                + "045d58e52e3deee2e8b78ec51e2d0cedb5080c8244bd3f651219cc48f3d3d404399d6748ab3eaaca0e32b927fc5e8107628e636b614cab332d8637c1d61caccdda");
-        ByteBuffer buffer = ByteBuffer.wrap(rawData);
-        KeyShareExtension parsedKeyShareExtension = new KeyShareExtension(buffer, TlsConstants.HandshakeType.server_hello);
-
-        ECPublicKey key = (ECPublicKey) parsedKeyShareExtension.getKeyShareEntries().get(0).getKey();
-        KeyShareExtension keyShareExtension = new KeyShareExtension(key, TlsConstants.NamedGroup.secp256r1, TlsConstants.HandshakeType.server_hello);
+        byte[] rawKeyExchangeData = ByteUtils.hexToBytes(
+                "045d58e52e3deee2e8b78ec51e2d0cedb5080c8244bd3f651219cc48f3d3d404399d6748ab3eaaca0e32b927fc5e8107628e636b614cab332d8637c1d61caccdda");
+        KeyShareExtension keyShareExtension = new KeyShareExtension(rawKeyExchangeData, TlsConstants.NamedGroup.secp256r1, TlsConstants.HandshakeType.server_hello);
         byte[] serialized = keyShareExtension.getBytes();
 
-        assertThat(serialized).isEqualTo(rawData);
+        assertThat(serialized).isEqualTo(ByteUtils.hexToBytes("0033" + "0045" + "0017" + "0041"
+                + "045d58e52e3deee2e8b78ec51e2d0cedb5080c8244bd3f651219cc48f3d3d404399d6748ab3eaaca0e32b927fc5e8107628e636b614cab332d8637c1d61caccdda"));
+    }
+
+    @Test
+    void serializeKeyShareWithKeyOfDifferentLength() throws Exception {
+        // The length of the key exchange data is determined by the key exchange method, not by this extension.
+        byte[] rawKeyExchangeData = ByteUtils.hexToBytes("0001020304050607");
+
+        KeyShareExtension keyShareExtension = new KeyShareExtension(rawKeyExchangeData, TlsConstants.NamedGroup.x25519, TlsConstants.HandshakeType.server_hello);
+        byte[] serialized = keyShareExtension.getBytes();
+
+        assertThat(serialized).isEqualTo(ByteUtils.hexToBytes("0033" + "000c" + "001d" + "0008" + "0001020304050607"));
+    }
+
+    @Test
+    void serializedKeyShareIsNotLongerThanItsContent() throws Exception {
+        byte[] rawKeyExchangeData = ByteUtils.hexToBytes("0001020304050607");
+
+        KeyShareExtension keyShareExtension = new KeyShareExtension(rawKeyExchangeData, TlsConstants.NamedGroup.x25519, TlsConstants.HandshakeType.client_hello);
+        byte[] serialized = keyShareExtension.getBytes();
+
+        // Extension type (2) + extension length (2) + entries length (2) + named group (2) + key length (2) + key
+        assertThat(serialized).hasSize(10 + rawKeyExchangeData.length);
+        int extensionDataLength = ByteBuffer.wrap(serialized).getShort(2) & 0xffff;
+        assertThat(serialized).hasSize(4 + extensionDataLength);
     }
 }

@@ -51,7 +51,6 @@ import java.security.Signature;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.ECPublicKey;
-import java.security.interfaces.XECPublicKey;
 import java.security.spec.MGF1ParameterSpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.PSSParameterSpec;
@@ -158,7 +157,7 @@ class TlsClientEngineTest {
 
         KeyShareExtension keyShareExtension = mock(KeyShareExtension.class);
         when(keyShareExtension.getBytes()).thenReturn(new byte[83]);
-        when(keyShareExtension.getKeyShareEntries()).thenReturn(List.of(new KeyShareExtension.KeyShareEntry(TlsConstants.NamedGroup.ffdhe2048, mock(XECPublicKey.class))));
+        when(keyShareExtension.getKeyShareEntries()).thenReturn(List.of(new KeyShareExtension.KeyShareEntry(TlsConstants.NamedGroup.ffdhe2048, new byte[256])));
         ServerHello serverHello = new ServerHello(TLS_AES_128_GCM_SHA256, List.of(keyShareExtension, new SupportedVersionsExtension(TlsConstants.HandshakeType.server_hello)));
 
         assertThatThrownBy(() ->
@@ -175,7 +174,7 @@ class TlsClientEngineTest {
 
         KeyShareExtension keyShareExtension = mock(KeyShareExtension.class);
         when(keyShareExtension.getBytes()).thenReturn(new byte[83]);
-        when(keyShareExtension.getKeyShareEntries()).thenReturn(List.of(new KeyShareExtension.KeyShareEntry(secp256r1, mock(ECPublicKey.class))));
+        when(keyShareExtension.getKeyShareEntries()).thenReturn(List.of(new KeyShareExtension.KeyShareEntry(secp256r1, new byte[65])));
         ServerHello serverHello = new ServerHello(TLS_AES_128_GCM_SHA256, List.of(keyShareExtension, new SupportedVersionsExtension(TlsConstants.HandshakeType.server_hello)));
 
         assertThatThrownBy(() ->
