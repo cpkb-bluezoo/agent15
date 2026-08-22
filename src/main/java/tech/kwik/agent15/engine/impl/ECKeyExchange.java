@@ -24,11 +24,10 @@ import tech.kwik.agent15.alert.IllegalParameterAlert;
 import tech.kwik.agent15.engine.KeyExchange;
 import tech.kwik.agent15.util.ByteUtils;
 
+import javax.crypto.KeyAgreement;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.security.AlgorithmParameters;
-import java.security.KeyFactory;
-import java.security.NoSuchAlgorithmException;
+import java.security.*;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.*;
 import java.util.Arrays;
@@ -54,6 +53,8 @@ public class ECKeyExchange implements KeyExchange {
     );
 
     private TlsConstants.NamedGroup namedGroup;
+    private PrivateKey privateKey;
+    private ECPublicKey publicKey;
 
     public ECKeyExchange(TlsConstants.NamedGroup namedGroup) {
         if (namedGroup == secp256r1 || namedGroup == secp384r1 || namedGroup == secp521r1) {
@@ -70,14 +71,47 @@ public class ECKeyExchange implements KeyExchange {
     }
 
     private void generateKeyPair() {
+        try {
+            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("EC");
+            keyPairGenerator.initialize(new ECGenParameterSpec(namedGroup.toString()));
+            KeyPair keyPair = keyPairGenerator.genKeyPair();
+            privateKey = keyPair.getPrivate();
+            publicKey = (ECPublicKey) keyPair.getPublic();
+        }
+        catch (NoSuchAlgorithmException e) {
+            // Invalid runtime
+            throw new RuntimeException("missing key pair generator algorithm EC");
+        }
+        catch (InvalidAlgorithmParameterException e) {
+            // Impossible, would be programming error
+            throw new RuntimeException();
+        }
     }
 
     @Override
-    public byte[] clientComputeSharedSecret(byte[] keyExchangeData) throws IllegalParameterAlert {
-        return null;
+    public byte[] clientComputeSharedSecret(byte[] serverKeyShare) throws DecodeErrorException, IllegalParameterAlert {
+        ECPublicKey serverPublicKey = parseKeyShare(serverKeyShare);
+        return computeSharedSecret(serverPublicKey);
     }
 
-    ECPublicKey parseClientKeyShare(byte[] keyExchangeData) throws DecodeErrorException, IllegalParameterAlert {
+    private byte[] computeSharedSecret(ECPublicKey peerPublicKey) throws IllegalParameterAlert {
+        try {
+            KeyAgreement keyAgreement = KeyAgreement.getInstance("ECDH");
+            keyAgreement.init(privateKey);
+            keyAgreement.doPhase(peerPublicKey, true);
+
+            return keyAgreement.generateSecret();
+        }
+        catch (InvalidKeyException e) {
+            // This can be caused by an invalid public key
+            throw new IllegalParameterAlert("invalid public key: " + e.getMessage());
+        }
+        catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("Unsupported crypto: " + e);
+        }
+    }
+
+    ECPublicKey parseKeyShare(byte[] keyExchangeData) throws DecodeErrorException {
         if (namedGroup == secp256r1) {
             int keyLength = CURVE_KEY_LENGTHS.get(namedGroup);
             if (keyExchangeData.length != keyLength) {
@@ -107,18 +141,22 @@ public class ECKeyExchange implements KeyExchange {
     }
 
     @Override
-    public byte[] serverProcessClientKeyShare(byte[] keyExchangeData) throws IllegalParameterAlert {
-        return null;
+    public byte[] serverProcessClientKeyShare(byte[] keyExchangeData) throws DecodeErrorException, IllegalParameterAlert {
+        if (privateKey == null) {
+            generateKeyPair();
+        }
+        return computeSharedSecret(parseKeyShare(keyExchangeData));
     }
 
     @Override
     public byte[] getClientKeyShare() {
-        return null;
+        return serialize(publicKey);
     }
 
     @Override
     public byte[] getServerKeyShare() {
-        return null;
+        System.out.println("#* getServerKeyShare for " + namedGroup);
+        return serialize(publicKey);
     }
 
     byte[] serialize(ECPublicKey key) {

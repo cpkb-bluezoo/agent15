@@ -38,6 +38,7 @@ import tech.kwik.agent15.handshake.EncryptedExtensions;
 import tech.kwik.agent15.handshake.FinishedMessage;
 import tech.kwik.agent15.handshake.NewSessionTicketMessage;
 import tech.kwik.agent15.handshake.ServerHello;
+import tech.kwik.agent15.util.ByteUtils;
 import tech.kwik.agent15.util.CertificateUtils;
 import tech.kwik.agent15.util.KeyUtils;
 
@@ -65,6 +66,8 @@ import static tech.kwik.agent15.util.TestUtils.regardless;
 
 
 public class TlsServerEngineTest {
+
+    public static final byte[] KEY_EXCHANGE_DATA = ByteUtils.hexToBytes("045d58e52e3deee2e8b78ec51e2d0cedb5080c8244bd3f651219cc48f3d3d404399d6748ab3eaaca0e32b927fc5e8107628e636b614cab332d8637c1d61caccdda");
 
     private TlsServerEngineImpl engine;
     private ECPublicKey publicKey;
@@ -99,14 +102,14 @@ public class TlsServerEngineTest {
         // Given
         engine.addSupportedCiphers(List.of(TLS_CHACHA20_POLY1305_SHA256));
 
-        ClientHello clientHello1 =  new ClientHello("localhost", publicKey, false,
+        ClientHello clientHello1 =  new ClientHello("localhost", KEY_EXCHANGE_DATA, false,
                 List.of(TLS_AES_128_GCM_SHA256),
                 List.of(rsa_pss_rsae_sha256),
                 NamedGroup.secp256r1, Collections.emptyList(), null, ClientHello.PskKeyEstablishmentMode.none);
         engine.received(clientHello1, ProtectionKeysType.None);
 
         // When
-        ClientHello clientHello2 =  new ClientHello("localhost", publicKey, false,
+        ClientHello clientHello2 =  new ClientHello("localhost", KEY_EXCHANGE_DATA, false,
                 List.of(TLS_CHACHA20_POLY1305_SHA256),   // Intentionally different cipher, this is the crux of the test!
                 List.of(rsa_pss_rsae_sha256),
                 NamedGroup.secp256r1, Collections.emptyList(), null, ClientHello.PskKeyEstablishmentMode.none);
@@ -121,7 +124,7 @@ public class TlsServerEngineTest {
     @Test
     void failingCipherNegotiationLeadsToHandshakeException() throws Exception {
         // Given
-        ClientHello clientHello = new ClientHello("localhost", publicKey, false,
+        ClientHello clientHello = new ClientHello("localhost", KEY_EXCHANGE_DATA, false,
                 List.of(TLS_CHACHA20_POLY1305_SHA256),
                 List.of(rsa_pss_rsae_sha256),
                 NamedGroup.secp256r1, Collections.emptyList(), null, ClientHello.PskKeyEstablishmentMode.both);
@@ -220,7 +223,7 @@ public class TlsServerEngineTest {
     @Test
     void serverSelectsCipherFromOptionsGivenByClientHello() throws Exception {
         // Given
-        ClientHello clientHello = new ClientHello("localhost", publicKey, false,
+        ClientHello clientHello = new ClientHello("localhost", KEY_EXCHANGE_DATA, false,
                 List.of(TLS_CHACHA20_POLY1305_SHA256, TLS_AES_128_GCM_SHA256),
                 List.of(rsa_pss_rsae_sha256),
                 NamedGroup.secp256r1, Collections.emptyList(), null, ClientHello.PskKeyEstablishmentMode.both);
@@ -445,7 +448,7 @@ public class TlsServerEngineTest {
     }
 
     private ClientHello createDefaultClientHello(List<Extension> extensions, TlsState state) {
-        return new ClientHello("localhost", publicKey, false,
+        return new ClientHello("localhost", KEY_EXCHANGE_DATA, false,
                 List.of(TLS_AES_128_GCM_SHA256),
                 List.of(rsa_pss_rsae_sha256),
                 NamedGroup.secp256r1, extensions, state, ClientHello.PskKeyEstablishmentMode.none);

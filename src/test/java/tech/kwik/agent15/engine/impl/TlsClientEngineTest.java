@@ -76,11 +76,14 @@ import static tech.kwik.agent15.util.TestUtils.regardless;
 
 class TlsClientEngineTest {
 
+    public static final byte[] KEY_EXCHANGE_DATA = ByteUtils.hexToBytes("045d58e52e3deee2e8b78ec51e2d0cedb5080c8244bd3f651219cc48f3d3d404399d6748ab3eaaca0e32b927fc5e8107628e636b614cab332d8637c1d61caccdda");
+
     private TlsClientEngineImpl engine;
     private ECPublicKey publicKey;
     private ClientMessageSender messageSender;
     private TlsConstants.CipherSuite engineCipher;
     private SupportedVersionsExtension mandatorySupportedVersionExtension;
+    private KeyShareExtension mandatoryKeyShareExtension;
 
     @BeforeEach
     void initObjectUnderTest() {
@@ -89,8 +92,9 @@ class TlsClientEngineTest {
         engine.setServerName("server");
         engineCipher = TLS_AES_128_GCM_SHA256;
         engine.addSupportedCiphers(List.of(engineCipher));
-        mandatorySupportedVersionExtension = new SupportedVersionsExtension(TlsConstants.HandshakeType.server_hello);
 
+        mandatorySupportedVersionExtension = new SupportedVersionsExtension(TlsConstants.HandshakeType.server_hello);
+        mandatoryKeyShareExtension = new KeyShareExtension(KEY_EXCHANGE_DATA, secp256r1, TlsConstants.HandshakeType.server_hello);
         publicKey = KeyUtils.generatePublicKey();
     }
 
@@ -191,7 +195,7 @@ class TlsClientEngineTest {
 
         ServerHello serverHello = new ServerHello(engineCipher, List.of(
                 new SupportedVersionsExtension(TlsConstants.HandshakeType.server_hello),
-                new KeyShareExtension(publicKey, secp256r1, TlsConstants.HandshakeType.server_hello),
+                mandatoryKeyShareExtension,
                 new ServerNameExtension("server")));
 
         assertThatThrownBy(() ->
@@ -209,7 +213,7 @@ class TlsClientEngineTest {
 
         ServerHello serverHello = new ServerHello(engineCipher, List.of(
                 new SupportedVersionsExtension(TlsConstants.HandshakeType.server_hello),
-                new KeyShareExtension(publicKey, secp256r1, TlsConstants.HandshakeType.server_hello),
+                mandatoryKeyShareExtension,
                 new UnknownExtension()));
 
         assertThatCode(() ->
@@ -1049,7 +1053,7 @@ class TlsClientEngineTest {
         List<Extension> extensions = new ArrayList<>();
         extensions.addAll(List.of(
                 mandatorySupportedVersionExtension,
-                new KeyShareExtension(publicKey, secp256r1, TlsConstants.HandshakeType.server_hello)));
+                mandatoryKeyShareExtension));
         extensions.addAll(additionalExtensions);
         return new ServerHello(cipherSuite, extensions);
     }

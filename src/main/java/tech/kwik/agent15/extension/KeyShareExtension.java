@@ -24,7 +24,6 @@ import tech.kwik.agent15.alert.DecodeErrorException;
 
 import java.nio.ByteBuffer;
 import java.security.PublicKey;
-import java.security.interfaces.ECPublicKey;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -44,33 +43,11 @@ public class KeyShareExtension extends Extension {
     private List<KeyShareEntry> keyShareEntries = new ArrayList<>();
 
 
-    /**
-     * Assuming KeyShareClientHello:
-     * "In the ClientHello message, the "extension_data" field of this extension contains a "KeyShareClientHello" value..."
-     * @param publicKey
-     * @param ecCurve
-     */
-    public KeyShareExtension(ECPublicKey publicKey, TlsConstants.NamedGroup ecCurve, TlsConstants.HandshakeType handshakeType) {
-        // TODO: remove this constructor
-        throw new IllegalArgumentException("Named group " + ecCurve + "not supported");
-    }
-
-    public KeyShareExtension(PublicKey publicKey, TlsConstants.NamedGroup ecCurve, TlsConstants.HandshakeType handshakeType) {
-        // TODO: remove this constructor
-        throw new IllegalArgumentException("Named group " + ecCurve + " not supported");
-    }
-
     public KeyShareExtension(byte[] keyExchangeData, TlsConstants.NamedGroup ecCurve, TlsConstants.HandshakeType handshakeType) {
         keyShareEntries.add(new KeyShareEntry(ecCurve, keyExchangeData));
         this.handshakeType = handshakeType;
     }
 
-    /**
-     * Assuming KeyShareServerHello:
-     * "In a ServerHello message, the "extension_data" field of this extension contains a KeyShareServerHello value..."
-     * @param buffer
-     * @throws TlsProtocolException
-     */
     public KeyShareExtension(ByteBuffer buffer, TlsConstants.HandshakeType handshakeType) throws TlsProtocolException {
         this(buffer, handshakeType, false);
     }
@@ -122,7 +99,7 @@ public class KeyShareExtension extends Extension {
             if (buffer.remaining() < keyLength) {
                 throw new DecodeErrorException("extension underflow");
             }
-            if (recognizedNamedGroup.isPresent() && supportedCurves.contains(recognizedNamedGroup.get())) {
+            if (recognizedNamedGroup.isPresent()) {
                 // Whether the key exchange data is valid for the given group, is up to the key exchange implementation.
                 byte[] keyExchangeData = new byte[keyLength];
                 buffer.get(keyExchangeData);

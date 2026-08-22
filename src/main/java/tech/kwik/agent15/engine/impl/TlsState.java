@@ -24,7 +24,6 @@ import tech.kwik.agent15.BinderCalculator;
 import tech.kwik.agent15.TlsConstants;
 import tech.kwik.agent15.alert.IllegalParameterAlert;
 
-import javax.crypto.KeyAgreement;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.ByteBuffer;
@@ -32,12 +31,6 @@ import java.nio.charset.Charset;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.interfaces.ECPublicKey;
-import java.security.interfaces.XECPublicKey;
-
-
 
 
 public class TlsState implements BinderCalculator {
@@ -53,8 +46,6 @@ public class TlsState implements BinderCalculator {
     private final short hashLength;
     private final short iv_length = 12;
     private boolean pskSelected;
-    private PublicKey serverSharedKey;
-    private PrivateKey clientPrivateKey;
     private final byte[] psk;
     private byte[] earlySecret;
     private byte[] binderKey;
@@ -130,33 +121,6 @@ public class TlsState implements BinderCalculator {
             throw new RuntimeException("Missing " + macAlgorithmName + " support");
         } catch (InvalidKeyException e) {
             throw new RuntimeException();
-        }
-    }
-
-    public void computeSharedSecret() throws IllegalParameterAlert {
-        try {
-            KeyAgreement keyAgreement;
-            if (serverSharedKey instanceof ECPublicKey) {
-                keyAgreement = KeyAgreement.getInstance("ECDH");
-            }
-            else if (serverSharedKey instanceof XECPublicKey) {
-                keyAgreement = KeyAgreement.getInstance("XDH");
-            }
-            else {
-                throw new RuntimeException("Unsupported key type");
-            }
-
-            keyAgreement.init(clientPrivateKey);
-            keyAgreement.doPhase(serverSharedKey, true);
-
-            sharedSecret = keyAgreement.generateSecret();
-        }
-        catch (InvalidKeyException e) {
-            // This can be caused by an invalid public key, e.g. a low-order point for X25519.
-            throw new IllegalParameterAlert("invalid public key: " + e.getMessage());
-        }
-        catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Unsupported crypto: " + e);
         }
     }
 
@@ -275,8 +239,8 @@ public class TlsState implements BinderCalculator {
         return serverApplicationTrafficSecret;
     }
 
-    public void setOwnKey(PrivateKey clientPrivateKey) {
-        this.clientPrivateKey = clientPrivateKey;
+    public void setSharedSecret(byte[] secret) {
+        sharedSecret = secret;
     }
 
     public void setPskSelected(int selectedIdentity) throws IllegalParameterAlert {
@@ -290,9 +254,5 @@ public class TlsState implements BinderCalculator {
             // "... if no PSK is selected, it will then need to compute the Early Secret corresponding to the zero PSK."
             computeEarlySecret(new byte[hashLength]);
         }
-    }
-
-    public void setPeerKey(PublicKey serverSharedKey) {
-        this.serverSharedKey = serverSharedKey;
     }
 }

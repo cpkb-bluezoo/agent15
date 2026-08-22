@@ -16,21 +16,30 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-package tech.kwik.agent15.engine;
+package tech.kwik.agent15.engine.impl;
 
-import tech.kwik.agent15.alert.DecodeErrorException;
-import tech.kwik.agent15.alert.IllegalParameterAlert;
+import tech.kwik.agent15.TlsConstants;
+import tech.kwik.agent15.engine.KeyExchange;
+import tech.kwik.agent15.engine.KeyExchangeFactory;
 
-public interface KeyExchange {
+import static tech.kwik.agent15.TlsConstants.NamedGroup.secp256r1;
+import static tech.kwik.agent15.TlsConstants.NamedGroup.x25519;
+import static tech.kwik.agent15.TlsConstants.NamedGroup.x448;
 
-    void generateClientKeyPair();
+public class KeyExchangeFactoryImpl implements KeyExchangeFactory {
 
-    byte[] getClientKeyShare();
+    @Override
+    public KeyExchange forGroup(TlsConstants.NamedGroup group) {
+        if (group == x25519 || group == x448) {
+            return new XDHKeyExchange(group);
+        }
+        if (group == secp256r1) {
+            return new ECKeyExchange(group);
+        }
+        return null;
+    }
 
-    byte[] clientComputeSharedSecret(byte[] serverKeyShare) throws IllegalParameterAlert, DecodeErrorException;
-
-    byte[] serverProcessClientKeyShare(byte[] clientKeyShare) throws IllegalParameterAlert, DecodeErrorException;  // returns shared secret
-
-    byte[] getServerKeyShare();  // valid only after serverProcessClientKeyShare(), maybe should have a checked exception
-
+    @Override
+    public void init() {
+    }
 }

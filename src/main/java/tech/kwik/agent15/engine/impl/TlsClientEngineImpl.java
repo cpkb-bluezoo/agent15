@@ -90,6 +90,7 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
     private boolean compatibilityMode;
     private List<TlsConstants.CipherSuite> supportedCiphers;
     private TlsConstants.NamedGroup ecCurve;
+    private KeyExchange keyExchange;
     private TlsConstants.CipherSuite selectedCipher;
     private List<Extension> requestedExtensions;
     private List<Extension> sentExtensions;
@@ -126,24 +127,21 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
     }
 
     @Override
-    public void startHandshake(TlsConstants.NamedGroup ecCurve) throws IOException {
-        startHandshake(ecCurve, List.of(rsa_pss_rsae_sha256));
+    public void startHandshake(TlsConstants.NamedGroup namedGroup) throws IOException {
+        startHandshake(namedGroup, List.of(rsa_pss_rsae_sha256));
     }
 
     /**
      * Start TLS handshake with given parameters
-     * @param ecCurve            the EC named group to use both for the DHE key generation (and thus for the key share
+     * @param ecNamedGroup            the EC named group to use both for the DHE key generation (and thus for the key share
      *                           extension) and (as the only supported group) in the supported group extension.
      * @param signatureSchemes   the signature algorithms this peer is willing to accept
      * @throws IOException
      */
     @Override
-    public void startHandshake(TlsConstants.NamedGroup ecCurve, List<TlsConstants.SignatureScheme> signatureSchemes) throws IOException {
+    public void startHandshake(TlsConstants.NamedGroup ecNamedGroup, List<TlsConstants.SignatureScheme> signatureSchemes) throws IOException {
         if (status != Status.Start) {
             throw new IllegalStateException("Handshake already started");
-        }
-        if (! KeyShareExtension.supportedCurves.contains(ecCurve)) {
-            throw new IllegalArgumentException("Named group " + ecCurve + " not supported");
         }
         if (signatureSchemes.stream().anyMatch(scheme -> !AVAILABLE_SIGNATURES.contains(scheme))) {
             // Remove available leaves the ones that are not available (cannot be supported)
@@ -162,13 +160,18 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
         if (newSessionTicket != null && !supportedCiphers.contains(newSessionTicket.getCipher())) {
             throw new IllegalStateException("For session resumption, support ciphers should contain the cipher used with the session-to-resume (" + newSessionTicket.getCipher().toString() + ")");
         }
-
-        supportedSignatures = signatureSchemes;
-        this.ecCurve = ecCurve;
-        generateKeys(ecCurve);
         if (serverName == null || supportedCiphers.isEmpty()) {
             throw new IllegalStateException("not all mandatory properties are set");
         }
+
+        keyExchange = new KeyExchangeFactoryImpl().forGroup(ecNamedGroup);
+        if (keyExchange == null) {
+            throw new IllegalArgumentException("Named group " + ecNamedGroup + " not supported");
+        }
+
+        supportedSignatures = signatureSchemes;
+        this.ecCurve = ecNamedGroup;
+        keyExchange.generateClientKeyPair();
 
         List<Extension> extensions;
         if (newSessionTicket != null) {
@@ -185,8 +188,8 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
             // Defer initialization of TlsState until selected cipher is known.
         }
 
-        clientHello = new ClientHello(serverName, publicKey, compatibilityMode, supportedCiphers, supportedSignatures,
-                ecCurve, extensions, state, ClientHello.PskKeyEstablishmentMode.PSKwithDHE);
+        clientHello = new ClientHello(serverName, keyExchange.getClientKeyShare(), compatibilityMode, supportedCiphers, supportedSignatures,
+                ecNamedGroup, extensions, state, ClientHello.PskKeyEstablishmentMode.PSKwithDHE);
         sentExtensions = clientHello.getExtensions();
 
         if (state != null) {
@@ -341,9 +344,7 @@ public class TlsClientEngineImpl extends TlsEngineImpl implements TlsClientEngin
             state.setNoPskSelected();
         }
         if (keyShare.isPresent()) {
-            state.setOwnKey(privateKey);
-            state.setPeerKey(keyShare.get().getKey());
-            state.computeSharedSecret();
+            state.setSharedSecret(keyExchange.clientComputeSharedSecret(keyShare.get().getKeyExchangeData()));
         }
         transcriptHash.record(serverHello);
         state.computeHandshakeSecrets();

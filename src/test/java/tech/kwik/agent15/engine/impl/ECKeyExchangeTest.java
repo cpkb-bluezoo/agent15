@@ -54,11 +54,11 @@ class ECKeyExchangeTest {
     }
 
     @Test
-    void parseClientKeyShareExtractsAffineCoordinates() throws Exception {
+    void parseKeyShareExtractsAffineCoordinates() throws Exception {
         byte[] data = ByteUtils.hexToBytes(CLIENT_KEY_EXCHANGE_DATA);
 
         // When
-        ECPublicKey ecPublicKey = ecKeyExchange.parseClientKeyShare(data);
+        ECPublicKey ecPublicKey = ecKeyExchange.parseKeyShare(data);
 
         // Then: the X coordinate is the first half and the Y coordinate the second half of the point representation.
         assertThat(ecPublicKey.getW().getAffineX())
@@ -72,7 +72,7 @@ class ECKeyExchangeTest {
         byte[] data = ByteUtils.hexToBytes(CLIENT_KEY_EXCHANGE_DATA);
 
         // When
-        ECPublicKey ecPublicKey = ecKeyExchange.parseClientKeyShare(data);
+        ECPublicKey ecPublicKey = ecKeyExchange.parseKeyShare(data);
 
         // Then
         assertThat(ecPublicKey.getParams().getCurve())
@@ -88,7 +88,7 @@ class ECKeyExchangeTest {
 
         ECKeyExchange keyExchange = ecKeyExchange;
 
-        assertThatThrownBy(() -> keyExchange.parseClientKeyShare(data))
+        assertThatThrownBy(() -> keyExchange.parseKeyShare(data))
                 .hasMessageContaining("legacy form");
     }
 
@@ -97,13 +97,13 @@ class ECKeyExchangeTest {
         // One byte short of a complete uncompressed point representation.
         byte[] data = Arrays.copyOf(ByteUtils.hexToBytes(CLIENT_KEY_EXCHANGE_DATA), 64);
 
-        assertThatThrownBy(() -> ecKeyExchange.parseClientKeyShare(data))
+        assertThatThrownBy(() -> ecKeyExchange.parseKeyShare(data))
                 .isInstanceOf(DecodeErrorException.class);
     }
 
     @Test
     void parseEmptyKeyShareThrows() {
-        assertThatThrownBy(() -> ecKeyExchange.parseClientKeyShare(new byte[0]))
+        assertThatThrownBy(() -> ecKeyExchange.parseKeyShare(new byte[0]))
                 .isInstanceOf(DecodeErrorException.class);
     }
 
@@ -111,7 +111,7 @@ class ECKeyExchangeTest {
     void parseKeyShareThatIsTooLongThrows() {
         byte[] data = Arrays.copyOf(ByteUtils.hexToBytes(CLIENT_KEY_EXCHANGE_DATA), 66);
 
-        assertThatThrownBy(() -> ecKeyExchange.parseClientKeyShare(data))
+        assertThatThrownBy(() -> ecKeyExchange.parseKeyShare(data))
                 .isInstanceOf(DecodeErrorException.class);
     }
 
@@ -125,7 +125,7 @@ class ECKeyExchangeTest {
 
     @Test
     void serializeCreatesUncompressedPointRepresentation() throws Exception {
-        ECPublicKey publicKey = ecKeyExchange.parseClientKeyShare(ByteUtils.hexToBytes(SERVER_KEY_EXCHANGE_DATA));
+        ECPublicKey publicKey = ecKeyExchange.parseKeyShare(ByteUtils.hexToBytes(SERVER_KEY_EXCHANGE_DATA));
 
         // When
         byte[] serialized = ecKeyExchange.serialize(publicKey);

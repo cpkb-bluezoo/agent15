@@ -26,16 +26,11 @@ import tech.kwik.agent15.alert.IllegalParameterAlert;
 import tech.kwik.agent15.extension.*;
 
 import java.nio.ByteBuffer;
-import java.security.PublicKey;
 import java.security.SecureRandom;
-import java.security.interfaces.ECPublicKey;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static tech.kwik.agent15.TlsConstants.NamedGroup.secp256r1;
 
 
 /**
@@ -154,17 +149,9 @@ public class ClientHello extends HandshakeMessage {
         buffer.get(data);
     }
 
-    public ClientHello(String serverName, ECPublicKey publicKey) {
-        this(serverName, publicKey, true, SUPPORTED_CIPHERS, SUPPORTED_SIGNATURES, secp256r1, Collections.emptyList(), null, PskKeyEstablishmentMode.both);
-    }
-
-    public ClientHello(String serverName, ECPublicKey publicKey, boolean compatibilityMode, List<Extension> extraExtensions) {
-        this(serverName, publicKey, compatibilityMode, SUPPORTED_CIPHERS, SUPPORTED_SIGNATURES, secp256r1, extraExtensions, null, PskKeyEstablishmentMode.both);
-    }
-
     /**
-     *  @param serverName
-     * @param publicKey
+     * @param serverName
+     * @param keyShare
      * @param compatibilityMode
      * @param supportedCiphers
      * @param supportedSignatures
@@ -173,7 +160,7 @@ public class ClientHello extends HandshakeMessage {
      * @param binderCalculator              can be null when no ClientHelloPreSharedKeyExtension is present, must be non-null when ClientHelloPreSharedKeyExtension is present.
      * @param pskKeyEstablishmentMode
      */
-    public ClientHello(String serverName, PublicKey publicKey, boolean compatibilityMode, List<TlsConstants.CipherSuite> supportedCiphers,
+    public ClientHello(String serverName, byte[] keyShare, boolean compatibilityMode, List<TlsConstants.CipherSuite> supportedCiphers,
                        List<TlsConstants.SignatureScheme> supportedSignatures, TlsConstants.NamedGroup ecCurve,
                        List<Extension> extraExtensions, BinderCalculator binderCalculator, PskKeyEstablishmentMode pskKeyEstablishmentMode) {
         this.cipherSuites = supportedCiphers;
@@ -224,7 +211,7 @@ public class ClientHello extends HandshakeMessage {
                 new SupportedVersionsExtension(TlsConstants.HandshakeType.client_hello),
                 new SupportedGroupsExtension(ecCurve),
                 new SignatureAlgorithmsExtension(supportedSignatures),
-                new KeyShareExtension(publicKey, ecCurve, TlsConstants.HandshakeType.client_hello),
+                new KeyShareExtension(keyShare, ecCurve, TlsConstants.HandshakeType.client_hello),
         };
 
         extensions = new ArrayList<>();

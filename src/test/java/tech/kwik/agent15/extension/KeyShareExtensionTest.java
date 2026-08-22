@@ -185,7 +185,7 @@ class KeyShareExtensionTest {
     }
 
     @Test
-    void parsingUnsupportedNamedGroupShouldBeIgnored() throws TlsProtocolException {
+    void parsingUnsupportedNamedGroupShouldWork() throws TlsProtocolException {
         String rawData = "0033" + "008c" + "008a"
                 // ffdhe2048(0x0100)
                 + "01000041045d58e52e3deee2e8b78ec51e2d0cedb5080c8244bd3f651219cc48f3d3d404399d6748ab3eaaca0e32b927fc5e8107628e636b614cab332d8637c1d61caccdda"
@@ -198,8 +198,9 @@ class KeyShareExtensionTest {
 
         // Then
         assertThat(keyShareEntries)
-                .hasSize(1)
-                .anyMatch(entry -> entry.getNamedGroup() == TlsConstants.NamedGroup.secp256r1);
+                .hasSize(2)
+                .anyMatch(entry ->
+                        entry.getNamedGroup() == TlsConstants.NamedGroup.secp256r1 || entry.getNamedGroup() == TlsConstants.NamedGroup.ffdhe2048);
     }
 
     @Test

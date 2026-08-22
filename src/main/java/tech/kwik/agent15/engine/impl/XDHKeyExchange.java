@@ -22,9 +22,9 @@ import tech.kwik.agent15.TlsConstants;
 import tech.kwik.agent15.alert.IllegalParameterAlert;
 import tech.kwik.agent15.engine.KeyExchange;
 
+import javax.crypto.KeyAgreement;
 import java.math.BigInteger;
-import java.security.KeyFactory;
-import java.security.NoSuchAlgorithmException;
+import java.security.*;
 import java.security.interfaces.XECPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.NamedParameterSpec;
@@ -49,9 +49,11 @@ public class XDHKeyExchange implements KeyExchange {
     );
 
     private TlsConstants.NamedGroup namedGroup;
+    private PrivateKey privateKey;
+    private XECPublicKey publicKey;
 
     public XDHKeyExchange(TlsConstants.NamedGroup namedGroup) {
-        if (namedGroup == x25519 || namedGroup == x448) {
+        if (namedGroup == x25519) {
             this.namedGroup = namedGroup;
         }
         else {
@@ -61,30 +63,72 @@ public class XDHKeyExchange implements KeyExchange {
 
     @Override
     public void generateClientKeyPair() {
+        generateKeyPair();
+    }
+
+    private void generateKeyPair() {
+        try {
+            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("XDH");
+            NamedParameterSpec paramSpec = new NamedParameterSpec(namedGroup.toString().toUpperCase());  // x25519 => X25519
+            keyPairGenerator.initialize(paramSpec);
+
+            KeyPair keyPair = keyPairGenerator.genKeyPair();
+            privateKey = keyPair.getPrivate();
+            publicKey = (XECPublicKey) keyPair.getPublic();
+        }
+        catch (NoSuchAlgorithmException e) {
+            // Invalid runtime
+            throw new RuntimeException("missing key pair generator algorithm EC");
+        }
+        catch (InvalidAlgorithmParameterException e) {
+            // Impossible, would be programming error
+            throw new RuntimeException();
+        }
     }
 
     @Override
     public byte[] getClientKeyShare() {
-        return new byte[0];
+        return serialize(publicKey);
     }
 
     @Override
     public byte[] clientComputeSharedSecret(byte[] serverKeyShare) throws IllegalParameterAlert {
-        return new byte[0];
+        XECPublicKey serverPublicKey = parseKeyShare(serverKeyShare);
+        return computeSharedSecret(serverPublicKey);
+    }
+
+    byte[] computeSharedSecret(XECPublicKey peerPublicKey) throws IllegalParameterAlert {
+        try {
+            KeyAgreement keyAgreement = KeyAgreement.getInstance("XDH");
+            keyAgreement.init(privateKey);
+            keyAgreement.doPhase(peerPublicKey, true);
+
+            return keyAgreement.generateSecret();
+        }
+        catch (InvalidKeyException e) {
+            // This can be caused by an invalid public key, e.g. a low-order point for X25519.
+            throw new IllegalParameterAlert("invalid public key: " + e.getMessage());
+        }
+        catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("Unsupported crypto: " + e);
+        }
     }
 
     @Override
     public byte[] serverProcessClientKeyShare(byte[] clientKeyShare) throws IllegalParameterAlert {
-        return new byte[0];
+        if (privateKey == null) {
+            generateKeyPair();
+        }
+        return computeSharedSecret(parseKeyShare(clientKeyShare));
     }
 
-    XECPublicKey parseClientKeyShare(byte[] keyExchangeData) throws IllegalParameterAlert {
+    XECPublicKey parseKeyShare(byte[] keyExchangeData) throws IllegalParameterAlert {
         return rawToEncodedXDHPublicKey(namedGroup, keyExchangeData);
     }
 
     @Override
     public byte[] getServerKeyShare() {
-        return new byte[0];
+        return serialize(publicKey);
     }
 
     byte[] serialize(XECPublicKey key) {

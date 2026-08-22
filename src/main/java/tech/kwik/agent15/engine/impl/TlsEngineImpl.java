@@ -34,18 +34,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
-import java.security.spec.ECGenParameterSpec;
 import java.security.spec.MGF1ParameterSpec;
-import java.security.spec.NamedParameterSpec;
 import java.security.spec.PSSParameterSpec;
 
-import static tech.kwik.agent15.TlsConstants.NamedGroup.*;
 import static tech.kwik.agent15.TlsConstants.SignatureScheme.*;
 
 public abstract class TlsEngineImpl implements TlsEngine {
 
-    protected PublicKey publicKey;
-    protected PrivateKey privateKey;
     protected TlsState state;
     protected AlgorithmMapping algorithmMapping;
 
@@ -88,34 +83,6 @@ public abstract class TlsEngineImpl implements TlsEngine {
             default:
                 // Impossible, as all enum values are covered
                 throw new RuntimeException();
-        }
-    }
-
-    protected void generateKeys(TlsConstants.NamedGroup namedGroup) {
-        try {
-            KeyPairGenerator keyPairGenerator;
-            if (namedGroup == secp256r1 || namedGroup == secp384r1 || namedGroup == secp521r1) {
-                keyPairGenerator = KeyPairGenerator.getInstance("EC");
-                keyPairGenerator.initialize(new ECGenParameterSpec(namedGroup.toString()));
-            }
-            else if (namedGroup == x25519 || namedGroup == x448) {
-                keyPairGenerator = KeyPairGenerator.getInstance("XDH");
-                NamedParameterSpec paramSpec = new NamedParameterSpec(namedGroup.toString().toUpperCase());  // x25519 => X25519
-                keyPairGenerator.initialize(paramSpec);
-            }
-            else {
-                throw new RuntimeException("unsupported group " + namedGroup);
-            }
-
-            KeyPair keyPair = keyPairGenerator.genKeyPair();
-            privateKey = keyPair.getPrivate();
-            publicKey = keyPair.getPublic();
-        } catch (NoSuchAlgorithmException e) {
-            // Invalid runtime
-            throw new RuntimeException("missing key pair generator algorithm EC");
-        } catch (InvalidAlgorithmParameterException e) {
-            // Impossible, would be programming error
-            throw new RuntimeException();
         }
     }
 

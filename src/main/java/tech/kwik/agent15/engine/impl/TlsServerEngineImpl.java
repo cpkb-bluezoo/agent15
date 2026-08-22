@@ -59,6 +59,7 @@ public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngin
     private List<X509Certificate> serverCertificateChain;
     private PrivateKey certificatePrivateKey;
     private TranscriptHash transcriptHash;
+    private KeyExchange keyExchange;
     private TlsConstants.CipherSuite selectedCipher;
     private SignatureScheme signatureScheme;
     private final List<SignatureScheme> preferredSignatureSchemes;
@@ -234,14 +235,19 @@ public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngin
         }
         transcriptHash.record(clientHello);
 
-        generateKeys(keyShareEntry.getNamedGroup());
-        state.setOwnKey(privateKey);
+        keyExchange = new KeyExchangeFactoryImpl().forGroup(keyShareEntry.getNamedGroup());
+        if (keyExchange == null) {
+            throw new IllegalArgumentException("Named group " + keyShareEntry.getNamedGroup() + " not supported");
+        }
+        keyExchange.serverProcessClientKeyShare(keyShareEntry.getKeyExchangeData());
+
         state.computeEarlyTrafficSecret();
         statusHandler.earlySecretsKnown();
 
+        byte[] sharedSecret = keyExchange.serverProcessClientKeyShare(keyShareEntry.getKeyExchangeData());
         List<Extension> extensions = List.of(
                 new SupportedVersionsExtension(TlsConstants.HandshakeType.server_hello),
-                new KeyShareExtension(publicKey, keyShareEntry.getNamedGroup(), TlsConstants.HandshakeType.server_hello));
+                new KeyShareExtension(keyExchange.getServerKeyShare(), keyShareEntry.getNamedGroup(), TlsConstants.HandshakeType.server_hello));
         if (selectedIdentity != null) {
             extensions = new ArrayList<>(extensions);
             extensions.add(new ServerPreSharedKeyExtension(selectedIdentity.shortValue()));
@@ -253,10 +259,8 @@ public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngin
 
         // Update state
         transcriptHash.record(serverHello);
-        state.setPeerKey(keyShareEntry.getKey());
 
-        // Compute keys
-        state.computeSharedSecret();
+        state.setSharedSecret(sharedSecret);
         state.computeHandshakeSecrets();
         statusHandler.handshakeSecretsKnown();
 
