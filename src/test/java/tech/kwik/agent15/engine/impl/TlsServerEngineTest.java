@@ -30,6 +30,8 @@ import tech.kwik.agent15.alert.HandshakeFailureAlert;
 import tech.kwik.agent15.alert.IllegalParameterAlert;
 import tech.kwik.agent15.alert.MissingExtensionAlert;
 import tech.kwik.agent15.alert.ProtocolVersionAlert;
+import tech.kwik.agent15.engine.KeyExchange;
+import tech.kwik.agent15.engine.KeyExchangeFactory;
 import tech.kwik.agent15.engine.ServerMessageSender;
 import tech.kwik.agent15.engine.TlsStatusEventHandler;
 import tech.kwik.agent15.extension.*;
@@ -87,7 +89,7 @@ public class TlsServerEngineTest {
         serverCertificate = CertificateUtils.inflateCertificate(encodedKwikDotTechRsaCertificate);
         tlsStatusHandler = mock(TlsStatusEventHandler.class);
         tlsSessionRegistry = new TlsSessionRegistryImpl();
-        engine = new TlsServerEngineImpl(serverCertificate, privateKey, List.of(rsa_pss_rsae_sha256), messageSender, tlsStatusHandler, tlsSessionRegistry) {
+        engine = new TlsServerEngineImpl(List.of(serverCertificate), privateKey, List.of(rsa_pss_rsae_sha256), messageSender, tlsStatusHandler, tlsSessionRegistry) {
             protected boolean validateBinder(ClientHelloPreSharedKeyExtension.PskBinderEntry pskBinderEntry, int binderPosition, ClientHello clientHello) {
                 return true;
             }
@@ -441,6 +443,129 @@ public class TlsServerEngineTest {
                 engine.received(clientHello, ProtectionKeysType.None))
                 // Then
                 .isInstanceOf(ProtocolVersionAlert.class);
+    }
+
+    @Test
+    void firstKeyShareGroupSupportedByServerIsSelected() throws Exception {
+        // Given: a server that (only) supports x25519
+        KeyExchangeFactory keyExchangeFactory = keyExchangeFactorySupporting(NamedGroup.x25519);
+        TlsServerEngineImpl engine = createEngine(keyExchangeFactory);
+        // and a client that offers x448 (which the server does not support) and x25519
+        ClientHello clientHello = createClientHelloWithKeyShares(NamedGroup.x448, NamedGroup.x25519);
+
+        // When
+        engine.received(clientHello, ProtectionKeysType.None);
+
+        // Then
+        assertThat(selectedGroup()).isEqualTo(NamedGroup.x25519);
+    }
+
+    @Test
+    void whenServerSupportsMultipleKeyShareGroupsClientPreferenceDetermines() throws Exception {
+        // Given: a server that supports both X25519MLKEM768 and x25519
+        KeyExchangeFactory keyExchangeFactory = keyExchangeFactorySupporting(NamedGroup.x448, NamedGroup.x25519, NamedGroup.X25519MLKEM768, NamedGroup.secp384r1);
+        TlsServerEngineImpl engine = createEngine(keyExchangeFactory);
+        // and a client that prefers X25519MLKEM768 (key shares are in client's order of preference)
+        ClientHello clientHello = createClientHelloWithKeyShares(NamedGroup.X25519MLKEM768, NamedGroup.x25519);
+
+        // When
+        engine.received(clientHello, ProtectionKeysType.None);
+
+        // Then
+        assertThat(selectedGroup()).isEqualTo(NamedGroup.X25519MLKEM768);
+    }
+
+    @Test
+    void whenServerSupportsNoneOfTheClientsGroupsHandshakeFailureIsThrown() throws Exception {
+        // Given: a server that (only) supports x25519
+        TlsServerEngineImpl engine = createEngine(keyExchangeFactorySupporting(NamedGroup.x25519));
+        // and a client that only offers x448
+        ClientHello clientHello = createClientHelloWithKeyShares(NamedGroup.x448);
+
+        assertThatThrownBy(() ->
+                // When
+                engine.received(clientHello, ProtectionKeysType.None))
+                // Then
+                .isInstanceOf(HandshakeFailureAlert.class);
+    }
+
+    /**
+     * Returns the named group of the key share in the ServerHello that the engine has sent.
+     */
+    private NamedGroup selectedGroup() throws Exception {
+        ArgumentCaptor<ServerHello> captor = ArgumentCaptor.forClass(ServerHello.class);
+        verify(messageSender).send(captor.capture());
+        return captor.getValue().getExtensions().stream()
+                .filter(ext -> ext instanceof KeyShareExtension)
+                .map(ext -> (KeyShareExtension) ext)
+                .flatMap(ext -> ext.getKeyShareEntries().stream())
+                .map(KeyShareExtension.KeyShareEntry::getNamedGroup)
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private TlsServerEngineImpl createEngine(KeyExchangeFactory keyExchangeFactory) throws Exception {
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        PKCS8EncodedKeySpec keySpecPKCS8 = new PKCS8EncodedKeySpec(Base64.getDecoder().decode(encodedKwikDotTechRsaCertificatePrivateKey));
+        PrivateKey privateKey = keyFactory.generatePrivate(keySpecPKCS8);
+
+        TlsServerEngineImpl engine = new TlsServerEngineImpl(List.of(serverCertificate), privateKey, List.of(rsa_pss_rsae_sha256),
+                messageSender, tlsStatusHandler, tlsSessionRegistry, keyExchangeFactory);
+        engine.addSupportedCiphers(List.of(TLS_AES_128_GCM_SHA256));
+        return engine;
+    }
+
+    /**
+     * Creates a key exchange factory that supports exactly the given groups: for any other group it returns null.
+     */
+    private KeyExchangeFactory keyExchangeFactorySupporting(NamedGroup... supportedGroups) throws Exception {
+        KeyExchange keyExchange = mock(KeyExchange.class);
+        when(keyExchange.serverProcessClientKeyShare(any())).thenReturn(new byte[32]);
+        when(keyExchange.getServerKeyShare()).thenReturn(new byte[32]);
+
+        KeyExchangeFactory keyExchangeFactory = mock(KeyExchangeFactory.class);   // Returns null for all groups by default
+        for (NamedGroup group: supportedGroups) {
+            when(keyExchangeFactory.forGroup(group)).thenReturn(keyExchange);
+        }
+        return keyExchangeFactory;
+    }
+
+    /**
+     * Creates a ClientHello that offers the given groups (both as supported groups and as key shares), in the given order.
+     */
+    private ClientHello createClientHelloWithKeyShares(NamedGroup... groups) throws Exception {
+        ClientHello clientHello = createDefaultClientHello();
+        clientHello.getExtensions().removeIf(ext -> ext instanceof SupportedGroupsExtension || ext instanceof KeyShareExtension);
+        clientHello.getExtensions().add(createSupportedGroupsExtension(groups));
+        clientHello.getExtensions().add(createKeyShareExtension(groups));
+        return clientHello;
+    }
+
+    private SupportedGroupsExtension createSupportedGroupsExtension(NamedGroup... groups) throws Exception {
+        ByteBuffer buffer = ByteBuffer.allocate(6 + 2 * groups.length);
+        buffer.putShort(ExtensionType.supported_groups.value);
+        buffer.putShort((short) (2 + 2 * groups.length));    // Extension data length
+        buffer.putShort((short) (2 * groups.length));        // Named groups length
+        for (NamedGroup group: groups) {
+            buffer.putShort(group.value);
+        }
+        buffer.flip();
+        return new SupportedGroupsExtension(buffer);
+    }
+
+    private KeyShareExtension createKeyShareExtension(NamedGroup... groups) throws Exception {
+        int entriesLength = groups.length * (4 + KEY_EXCHANGE_DATA.length);
+        ByteBuffer buffer = ByteBuffer.allocate(6 + entriesLength);
+        buffer.putShort(ExtensionType.key_share.value);
+        buffer.putShort((short) (2 + entriesLength));   // Extension data length
+        buffer.putShort((short) entriesLength);         // Key share entries length
+        for (NamedGroup group: groups) {
+            buffer.putShort(group.value);
+            buffer.putShort((short) KEY_EXCHANGE_DATA.length);
+            buffer.put(KEY_EXCHANGE_DATA);
+        }
+        buffer.flip();
+        return new KeyShareExtension(buffer, HandshakeType.client_hello);
     }
 
     private ClientHello createDefaultClientHello() {

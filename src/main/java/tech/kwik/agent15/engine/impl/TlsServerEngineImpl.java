@@ -37,7 +37,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static tech.kwik.agent15.TlsConstants.CipherSuite.TLS_AES_128_GCM_SHA256;
-import static tech.kwik.agent15.TlsConstants.NamedGroup.x25519;
 import static tech.kwik.agent15.TlsConstants.PskKeyExchangeMode.psk_dhe_ke;
 
 public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngine, ServerMessageProcessor {
@@ -53,6 +52,7 @@ public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngin
 
     private final Set<TlsConstants.CipherSuite> supportedCiphers;
     private final ArrayList<Extension> extensions;
+    private final KeyExchangeFactory keyExchangeFactory;
     private ServerMessageSender serverMessageSender;
     protected TlsStatusEventHandler statusHandler;
     private Status status = Status.Start;
@@ -83,11 +83,29 @@ public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngin
      * @param tlsSessionRegistry  the registry that is used to store and retrieve session data for session resumption; can be null if session resumption is not supported
      */
     public TlsServerEngineImpl(List<X509Certificate> certificates, PrivateKey certificateKey, List<SignatureScheme> preferredSignatureSchemes, ServerMessageSender serverMessageSender, TlsStatusEventHandler tlsStatusHandler, TlsSessionRegistry tlsSessionRegistry) {
+        this(certificates, certificateKey, preferredSignatureSchemes, serverMessageSender, tlsStatusHandler, tlsSessionRegistry, new KeyExchangeFactoryImpl());
+    }
+
+    /**
+     * Create new TLS server engine, with a specific key exchange factory. The key exchange factory determines which
+     * key exchange algorithms (named groups) the server supports: all groups for which the factory can create a
+     * key exchange (i.e. does not return null).
+     * Caller must ensure that the preferred signature schemes are compatible with the provided certificate (i.e. that the certificate's public key can be used with all signature schemes).
+     * @param certificates  the certificate chain for the server certificate
+     * @param certificateKey  the private key for the server certificate
+     * @param preferredSignatureSchemes   the signature schemes that the server supports (must be compatible with the provided certificate)
+     * @param serverMessageSender  the callback that is used to send messages to the client
+     * @param tlsStatusHandler  the callback that is used to notify the context of status changes in the TLS engine, for example when secrets become available or when the handshake is finished
+     * @param tlsSessionRegistry  the registry that is used to store and retrieve session data for session resumption; can be null if session resumption is not supported
+     * @param keyExchangeFactory  the factory that creates the key exchange for a given named group
+     */
+    public TlsServerEngineImpl(List<X509Certificate> certificates, PrivateKey certificateKey, List<SignatureScheme> preferredSignatureSchemes, ServerMessageSender serverMessageSender, TlsStatusEventHandler tlsStatusHandler, TlsSessionRegistry tlsSessionRegistry, KeyExchangeFactory keyExchangeFactory) {
         this.serverCertificateChain = certificates;
         this.certificatePrivateKey = certificateKey;
         this.preferredSignatureSchemes = preferredSignatureSchemes;
         this.serverMessageSender = serverMessageSender;
         this.statusHandler = tlsStatusHandler;
+        this.keyExchangeFactory = keyExchangeFactory;
 
         supportedCiphers = new HashSet<>();
         supportedCiphers.add(TLS_AES_128_GCM_SHA256);
@@ -95,10 +113,6 @@ public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngin
         serverExtensions = new ArrayList<>();
         clientSupportedKeyExchangeModes = new ArrayList<>();
         sessionRegistry = tlsSessionRegistry;
-    }
-
-    public TlsServerEngineImpl(X509Certificate serverCertificate, PrivateKey certificateKey, List<SignatureScheme> preferredSignatureSchemes, ServerMessageSender serverMessageSender, TlsStatusEventHandler tlsStatusHandler, TlsSessionRegistry tlsSessionRegistry) {
-        this(List.of(serverCertificate), certificateKey, preferredSignatureSchemes, serverMessageSender, tlsStatusHandler, tlsSessionRegistry);
     }
 
     @Override
@@ -132,18 +146,18 @@ public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngin
                 // with either a "handshake_failure" or "insufficient_security" fatal alert "
                 .orElseThrow(() -> new HandshakeFailureAlert("Failed to negotiate a cipher (server only supports " + supportedCiphers.stream().map(c -> c.toString()).collect(Collectors.joining(", ")) + ")"));
 
-        SupportedGroupsExtension supportedGroupsExt = (SupportedGroupsExtension) clientHello.getExtensions().stream()
+        SupportedGroupsExtension clientSupportedGroups = (SupportedGroupsExtension) clientHello.getExtensions().stream()
                 .filter(ext -> ext instanceof SupportedGroupsExtension)
                 .findFirst()
                 .orElseThrow(() -> new MissingExtensionAlert("supported groups extension is required in Client Hello"));
 
-        // This implementation (yet) only supports secp256r1 and x25519
-        List<TlsConstants.NamedGroup> serverSupportedGroups = List.of(TlsConstants.NamedGroup.secp256r1, x25519);
-        if (supportedGroupsExt.getNamedGroups().stream()
-                .filter(serverSupportedGroups::contains)
+        // Which groups the server supports is determined by the key exchange factory: it supports a group when it can
+        // create a key exchange for it.
+        if (clientSupportedGroups.getNamedGroups().stream()
+                .filter(this::isSupportedGroup)
                 .findFirst()
                 .isEmpty()) {
-            throw new HandshakeFailureAlert(String.format("Failed to negotiate supported group (server only supports %s)", serverSupportedGroups));
+            throw new HandshakeFailureAlert("Failed to negotiate supported group");
         }
 
         KeyShareExtension keyShareExtension = (KeyShareExtension) clientHello.getExtensions().stream()
@@ -151,10 +165,18 @@ public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngin
                 .findFirst()
                 .orElseThrow(() -> new MissingExtensionAlert("key share extension is required in Client Hello"));
 
-        KeyShareExtension.KeyShareEntry keyShareEntry = keyShareExtension.getKeyShareEntries().stream()
-                .filter(entry -> serverSupportedGroups.contains(entry.getNamedGroup()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalParameterAlert("key share named group not supported (and no HelloRetryRequest support)"));
+        // Key share entries are in client's order of preference, so use the first one the server supports.
+        KeyShareExtension.KeyShareEntry selectedKeyShareEntry = null;
+        for (KeyShareExtension.KeyShareEntry entry: keyShareExtension.getKeyShareEntries()) {
+            keyExchange = keyExchangeFactory.forGroup(entry.getNamedGroup());
+            if (keyExchange != null) {
+                selectedKeyShareEntry = entry;
+                break;
+            }
+        }
+        if (selectedKeyShareEntry == null) {
+            throw new IllegalParameterAlert("key share named group not supported (and no HelloRetryRequest support)");
+        }
 
         SignatureAlgorithmsExtension signatureAlgorithmsExtension = (SignatureAlgorithmsExtension) clientHello.getExtensions().stream()
                 .filter(ext -> ext instanceof SignatureAlgorithmsExtension)
@@ -235,17 +257,13 @@ public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngin
         }
         transcriptHash.record(clientHello);
 
-        keyExchange = new KeyExchangeFactoryImpl().forGroup(keyShareEntry.getNamedGroup());
-        if (keyExchange == null) {
-            throw new IllegalArgumentException("Named group " + keyShareEntry.getNamedGroup() + " not supported");
-        }
         state.computeEarlyTrafficSecret();
         statusHandler.earlySecretsKnown();
 
-        byte[] sharedSecret = keyExchange.serverProcessClientKeyShare(keyShareEntry.getKeyExchangeData());
+        byte[] sharedSecret = keyExchange.serverProcessClientKeyShare(selectedKeyShareEntry.getKeyExchangeData());
         List<Extension> extensions = List.of(
                 new SupportedVersionsExtension(TlsConstants.HandshakeType.server_hello),
-                new KeyShareExtension(keyExchange.getServerKeyShare(), keyShareEntry.getNamedGroup(), TlsConstants.HandshakeType.server_hello));
+                new KeyShareExtension(keyExchange.getServerKeyShare(), selectedKeyShareEntry.getNamedGroup(), TlsConstants.HandshakeType.server_hello));
         if (selectedIdentity != null) {
             extensions = new ArrayList<>(extensions);
             extensions.add(new ServerPreSharedKeyExtension(selectedIdentity.shortValue()));
@@ -292,6 +310,10 @@ public class TlsServerEngineImpl extends TlsEngineImpl implements TlsServerEngin
         state.computeApplicationSecrets();
 
         status = Status.WaitFinished;
+    }
+
+    private boolean isSupportedGroup(TlsConstants.NamedGroup group) {
+        return keyExchangeFactory.forGroup(group) != null;
     }
 
     protected static SignatureScheme determineSignatureAlgorithm(List<SignatureScheme> clientAlgorithms,
