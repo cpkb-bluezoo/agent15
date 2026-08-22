@@ -177,8 +177,10 @@ class XDHKeyExchangeTest {
     void x25519LowOrderPointShouldNotProduceAllZeroSharedSecret() throws Exception {
         // Given
         XDHKeyExchange keyExchange = new XDHKeyExchange(TlsConstants.NamedGroup.x25519);
+        // A key pair is required, to ensure the exception is caused by the peer's public key and not by a missing private key.
+        keyExchange.generateClientKeyPair();
 
-        // u=325606... is a torsion point of order 4: X25519(k, u) = 0 for any scalar k
+        // u=39382357... is a torsion point of small order: X25519(k, u) = 0 for any scalar k
         KeyFactory kf = KeyFactory.getInstance("XDH");
         BigInteger torsionU = new BigInteger("39382357235489614581723060781553021112529911719440698176882885853963445705823");
         XECPublicKey lowOrderPoint = (XECPublicKey) kf.generatePublic(new XECPublicKeySpec(new NamedParameterSpec("X25519"), torsionU));
@@ -186,8 +188,9 @@ class XDHKeyExchangeTest {
         assertThatThrownBy(() ->
                 // When
                 keyExchange.computeSharedSecret(lowOrderPoint)
-                // Then
-        ).isInstanceOf(IllegalParameterAlert.class);
+                // Then: the alert must be caused by the small order point, not by e.g. an unusable private key.
+        ).isInstanceOf(IllegalParameterAlert.class)
+                .hasMessageContaining("small order");
     }
 
     private XECPublicKey keyWithU(BigInteger u) {
