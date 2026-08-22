@@ -4,8 +4,12 @@ apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    // Temporarily targeting 25 on this branch for ML-KEM support
+    // (java.security.KEM finalized in 25). To be split into a separate
+    // module once the hybrid key exchange work is complete, so core
+    // Agent15 can go back to targeting 11.
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
 }
 
 repositories {
@@ -23,7 +27,11 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
     testImplementation("org.mockito:mockito-core:5.23.0")
     testImplementation("org.assertj:assertj-core:3.27.7")
-    testImplementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
+    // 1.78.1 predates ML-KEM support (only pre-standardisation Kyber round 3,
+    // which is not wire-compatible with FIPS 203 ML-KEM); 1.79+ has real
+    // ML-KEM, used to cross-check MLKEMKeyExchange's wire format against an
+    // independent implementation.
+    testImplementation("org.bouncycastle:bcprov-jdk18on:1.81")
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
