@@ -29,8 +29,13 @@ import static tech.kwik.agent15.TlsConstants.NamedGroup.secp384r1;
  */
 public class SecP384r1MLKEM1024KeyExchange extends HybridKeyExchange {
 
+    // RFC 8446 section 4.2.8.2 -- matches ECKeyExchange's own (private)
+    // CURVE_KEY_LENGTHS entry for secp384r1 (uncompressed point: 1 +
+    // 2 * 48-byte coordinates).
+    public static final int SECP384R1_SHARE_LENGTH = 97;
+
     public SecP384r1MLKEM1024KeyExchange() {
-        super("SecP384r1MLKEM1024", new ECKeyExchange(secp384r1), 97,
+        super("SecP384r1MLKEM1024", new ECKeyExchange(secp384r1), SECP384R1_SHARE_LENGTH,
                 new MLKEM1024KeyExchange(), MLKEM1024KeyExchange.ENCAPSULATION_KEY_LENGTH,
                 MLKEM1024KeyExchange.CIPHERTEXT_LENGTH, false);
     }

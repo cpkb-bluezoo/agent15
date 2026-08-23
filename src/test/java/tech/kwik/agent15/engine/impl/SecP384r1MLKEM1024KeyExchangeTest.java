@@ -30,12 +30,12 @@ class SecP384r1MLKEM1024KeyExchangeTest {
         SecP384r1MLKEM1024KeyExchange client = new SecP384r1MLKEM1024KeyExchange();
         client.generateClientKeyPair();
         byte[] clientKeyShare = client.getClientKeyShare();
-        assertThat(clientKeyShare).hasSize(97 + MLKEM1024KeyExchange.ENCAPSULATION_KEY_LENGTH);
+        assertThat(clientKeyShare).hasSize(SecP384r1MLKEM1024KeyExchange.SECP384R1_SHARE_LENGTH + MLKEM1024KeyExchange.ENCAPSULATION_KEY_LENGTH);
 
         SecP384r1MLKEM1024KeyExchange server = new SecP384r1MLKEM1024KeyExchange();
         byte[] serverSecret = server.serverProcessClientKeyShare(clientKeyShare);
         byte[] serverKeyShare = server.getServerKeyShare();
-        assertThat(serverKeyShare).hasSize(97 + MLKEM1024KeyExchange.CIPHERTEXT_LENGTH);
+        assertThat(serverKeyShare).hasSize(SecP384r1MLKEM1024KeyExchange.SECP384R1_SHARE_LENGTH + MLKEM1024KeyExchange.CIPHERTEXT_LENGTH);
 
         byte[] clientSecret = client.clientComputeSharedSecret(serverKeyShare);
         assertThat(clientSecret).isEqualTo(serverSecret);

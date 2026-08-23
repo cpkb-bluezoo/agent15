@@ -30,12 +30,12 @@ class X25519MLKEM768KeyExchangeTest {
         X25519MLKEM768KeyExchange client = new X25519MLKEM768KeyExchange();
         client.generateClientKeyPair();
         byte[] clientKeyShare = client.getClientKeyShare();
-        assertThat(clientKeyShare).hasSize(32 + MLKEM768KeyExchange.ENCAPSULATION_KEY_LENGTH);
+        assertThat(clientKeyShare).hasSize(X25519MLKEM768KeyExchange.X25519_SHARE_LENGTH + MLKEM768KeyExchange.ENCAPSULATION_KEY_LENGTH);
 
         X25519MLKEM768KeyExchange server = new X25519MLKEM768KeyExchange();
         byte[] serverSecret = server.serverProcessClientKeyShare(clientKeyShare);
         byte[] serverKeyShare = server.getServerKeyShare();
-        assertThat(serverKeyShare).hasSize(32 + MLKEM768KeyExchange.CIPHERTEXT_LENGTH);
+        assertThat(serverKeyShare).hasSize(X25519MLKEM768KeyExchange.X25519_SHARE_LENGTH + MLKEM768KeyExchange.CIPHERTEXT_LENGTH);
 
         byte[] clientSecret = client.clientComputeSharedSecret(serverKeyShare);
         assertThat(clientSecret).isEqualTo(serverSecret);

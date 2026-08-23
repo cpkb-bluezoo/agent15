@@ -29,8 +29,12 @@ import static tech.kwik.agent15.TlsConstants.NamedGroup.x25519;
  */
 public class X25519MLKEM768KeyExchange extends HybridKeyExchange {
 
+    // RFC 8446 section 4.2.8.2 -- matches XDHKeyExchange's own
+    // (private) CURVE_KEY_LENGTHS entry for x25519.
+    public static final int X25519_SHARE_LENGTH = 32;
+
     public X25519MLKEM768KeyExchange() {
-        super("X25519MLKEM768", new XDHKeyExchange(x25519), 32,
+        super("X25519MLKEM768", new XDHKeyExchange(x25519), X25519_SHARE_LENGTH,
                 new MLKEM768KeyExchange(), MLKEM768KeyExchange.ENCAPSULATION_KEY_LENGTH,
                 MLKEM768KeyExchange.CIPHERTEXT_LENGTH, true);
     }
